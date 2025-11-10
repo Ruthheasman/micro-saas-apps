@@ -86,9 +86,38 @@ class BabbageWalletAdapter implements WalletAdapter {
   id: WalletProvider = "babbage";
   label = "Metanet (Babbage)";
   installUrl = "https://getmetanet.com";
+  
+  private isAvailable: boolean | null = null;
 
   detect(): boolean {
-    return typeof window.CWI !== 'undefined';
+    if (this.isAvailable !== null) {
+      console.log('[Babbage] Cached availability:', this.isAvailable);
+      return this.isAvailable;
+    }
+    
+    if (typeof window.CWI !== 'undefined') {
+      console.log('[Babbage] Detected via window.CWI');
+      this.isAvailable = true;
+      return true;
+    }
+    
+    console.log('[Babbage] window.CWI not found, checking SDK availability...');
+    this.checkAvailability();
+    return false;
+  }
+  
+  private async checkAvailability() {
+    try {
+      console.log('[Babbage] Attempting SDK detection...');
+      const { isAuthenticated } = await import('@babbage/sdk-ts');
+      const result = await isAuthenticated();
+      console.log('[Babbage] SDK detection result:', result);
+      this.isAvailable = true;
+      window.dispatchEvent(new Event('wallet-detected'));
+    } catch (error) {
+      console.error('[Babbage] SDK detection failed:', error);
+      this.isAvailable = false;
+    }
   }
 
   async connect(): Promise<{ success: boolean; error?: string }> {
@@ -169,6 +198,11 @@ export function detectAvailableWallets(): WalletProvider[] {
     if (adapter.detect()) {
       available.push(adapter.id);
     }
+  });
+  
+  console.log('[Wallet Detection] Available wallets:', available, {
+    hasWindowCWI: typeof window.CWI !== 'undefined',
+    hasWindowYours: typeof window.yours !== 'undefined'
   });
 
   return available;

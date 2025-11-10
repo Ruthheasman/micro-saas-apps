@@ -36,19 +36,25 @@ export function useWalletDetection(): WalletInfo {
 
     checkForWallets();
 
-    const timeout = setTimeout(() => {
+    const interval = setInterval(() => {
       checkForWallets();
-    }, 1000);
+    }, 2000);
 
     const handleYoursInitialized = () => {
       checkForWallets();
     };
 
+    const handleWalletDetected = () => {
+      checkForWallets();
+    };
+
     window.addEventListener('yours#initialized', handleYoursInitialized);
+    window.addEventListener('wallet-detected', handleWalletDetected);
 
     return () => {
-      clearTimeout(timeout);
+      clearInterval(interval);
       window.removeEventListener('yours#initialized', handleYoursInitialized);
+      window.removeEventListener('wallet-detected', handleWalletDetected);
     };
   }, []);
 
