@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import WalletStatus from "@/components/WalletStatus";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useTestApp } from "@/contexts/TestAppContext";
 
 export default function BuilderPage() {
   const [description, setDescription] = useState("");
@@ -30,6 +32,8 @@ export default function BuilderPage() {
   const [appName, setAppName] = useState("");
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
+  const { setTestApp } = useTestApp();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -118,6 +122,13 @@ export default function BuilderPage() {
       });
     },
   });
+
+  const handleTestApp = () => {
+    const name = appName || "untitled-app";
+    const urlFriendlyName = name.toLowerCase().replace(/\s+/g, "-");
+    setTestApp(generatedCode, name);
+    setLocation(`/test/${urlFriendlyName}`);
+  };
 
   if (authLoading || !isAuthenticated) {
     return (
@@ -314,12 +325,20 @@ export default function BuilderPage() {
           {generatedCode && (
             <div className="border-t p-6 flex items-center justify-between bg-muted/30">
               <div className="space-y-1">
-                <p className="text-sm font-medium">Ready to save?</p>
+                <p className="text-sm font-medium">Ready to test or save?</p>
                 <p className="text-xs text-muted-foreground">
-                  Save as draft or deploy to blockchain
+                  Test in isolation, save as draft, or deploy to blockchain
                 </p>
               </div>
               <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleTestApp}
+                  data-testid="button-test-app"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Test App
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => saveMutation.mutate()}
