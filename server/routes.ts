@@ -5,13 +5,23 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import Anthropic from "@anthropic-ai/sdk";
 import { insertAppSchema } from "@shared/schema";
 import { z } from "zod";
-import { transformSync } from "@babel/core";
+import { parse } from "@babel/parser";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Validate generated code with Babel
+/**
+ * Validate generated code using @babel/parser for accurate syntax checking.
+ * 
+ * This uses parse() instead of transformSync() to avoid false positives from
+ * the transform pipeline (e.g., "Missing semicolon" on valid template literals).
+ * 
+ * Validation strategy:
+ * 1. Check for banned import/export statements (regex)
+ * 2. Parse code as JSX to verify syntax (throws SyntaxError if invalid)
+ * 3. Only actual syntax errors fail validation
+ */
 function validateCode(code: string): { valid: boolean; error?: string } {
   // First check for banned syntax (imports/exports)
   if (/^\s*import\s+/m.test(code)) {
@@ -22,10 +32,17 @@ function validateCode(code: string): { valid: boolean; error?: string } {
   }
   
   try {
-    transformSync(code, {
-      presets: ['@babel/preset-react'],
-      filename: 'generated-app.jsx',
-      sourceType: 'script', // Enforce script semantics, not module
+    // Parse code with JSX and modern JS features
+    // Using parse() directly avoids transform pipeline false positives
+    parse(code, {
+      sourceType: 'module', // Parse as module for full feature support
+      plugins: [
+        'jsx',
+        'classProperties',
+        'optionalChaining',
+        'nullishCoalescingOperator',
+      ],
+      errorRecovery: false, // Strict parsing - fail on any syntax error
     });
     return { valid: true };
   } catch (error: any) {

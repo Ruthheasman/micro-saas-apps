@@ -84,9 +84,20 @@ Preferred communication style: Simple, everyday language.
 **Generation Flow**:
 1. User provides app description, category, and price
 2. Backend sends prompt to Claude requesting complete React component
-3. AI generates production-ready code with proper imports and styling
-4. Code validated and returned to frontend for preview
-5. User can iterate or deploy
+3. AI generates production-ready code
+4. **Code Validation**: Backend validates syntax using `@babel/parser`
+5. **Auto-Retry**: If validation fails, retries up to 3 times with error context
+6. Validated code returned to frontend for preview
+7. User can test, iterate, or deploy
+
+**Error Detection & Auto-Fix System**:
+- **Syntax Validation**: Uses `@babel/parser` with JSX plugins to verify code syntax
+- **Import/Export Detection**: Regex checks prevent module syntax (import/export statements)
+- **Smart Retry Logic**: Up to 3 generation attempts with error messages included in retry prompts
+- **Parser-Based Approach**: Avoids false positives from transform pipeline (e.g., template literal issues)
+- **Validation Plugins**: Supports JSX, class properties, optional chaining, nullish coalescing
+- **Strict Parsing**: `errorRecovery: false` ensures genuine syntax errors are caught
+- **Logging**: All validation attempts and results logged for debugging
 
 **Prompt Engineering**: System prompts emphasize production-ready plain JavaScript code (no TypeScript) with Tailwind CSS styling and native HTML elements. Generated apps are self-contained React components that avoid external library imports.
 
@@ -96,6 +107,7 @@ Preferred communication style: Simple, everyday language.
 - Must work in browser with Babel JSX transformer
 - Pure client-side code (no server dependencies)
 - Self-contained and ready for build pipeline
+- No import/export statements (validated and rejected automatically)
 
 ### Blockchain Integration
 

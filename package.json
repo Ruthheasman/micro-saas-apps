@@ -14,6 +14,7 @@
     "@anthropic-ai/sdk": "^0.68.0",
     "@babbage/sdk-ts": "^0.2.75",
     "@babel/core": "^7.28.5",
+    "@babel/parser": "^7.28.5",
     "@babel/preset-react": "^7.28.5",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
