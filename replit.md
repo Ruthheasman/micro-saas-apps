@@ -88,13 +88,66 @@ Preferred communication style: Simple, everyday language.
 4. Code validated and returned to frontend for preview
 5. User can iterate or deploy
 
-**Prompt Engineering**: System prompts emphasize production-ready code with shadcn/ui components, Tailwind styling, and proper TypeScript types. Generated apps are self-contained React components.
+**Prompt Engineering**: System prompts emphasize production-ready plain JavaScript code (no TypeScript) with Tailwind CSS styling and native HTML elements. Generated apps are self-contained React components that avoid external library imports.
+
+**Code Generation Constraints**:
+- Pure JavaScript only (no TypeScript syntax, type annotations, or interfaces)
+- No external component library imports (builds native HTML with Tailwind)
+- Must work in browser with Babel JSX transformer
+- Pure client-side code (no server dependencies)
+- Self-contained and ready for build pipeline
 
 ### Blockchain Integration
 
 **Target Blockchain**: BSV (Bitcoin SV) blockchain using 1Sat ordinals protocol.
 
-**Deployment Strategy**: Apps deployed via React-OnChain library (`danwag06/react-onchain`), enabling sub-penny deployment costs and permanent on-chain storage. Each app becomes a tradable blockchain asset.
+**Deployment Strategy**: Apps deployed via React-OnChain CLI tool (`danwag06/react-onchain`), enabling sub-penny deployment costs and permanent on-chain storage. Each app becomes a tradable blockchain asset.
+
+**Build Pipeline Architecture** (Planned Implementation):
+
+*Current State*: AI generates single React components stored as code strings. Components can be previewed in-app but are not yet deployable to blockchain.
+
+*Planned Architecture*:
+1. **Server-Side Build Worker**: Background worker runs builds in isolated temp directories
+2. **Vite Project Template**: Pre-configured template with Tailwind CSS, committed to repo
+3. **Component Injection**: Generated component injected into template's `src/App.jsx`
+4. **Build Process**: Runs `npm install` (cached) and `npm run build` to create static files
+5. **Blockchain Deployment**: Invokes `npx react-onchain deploy` with build artifacts
+6. **Result Tracking**: Stores deployment status, transaction ID, and content URL
+
+*Deployment Workflow*:
+1. User clicks "Deploy to Blockchain" in dashboard
+2. Backend enqueues deployment job (status: queued)
+3. Worker picks job and executes build pipeline
+4. On success: Updates app with txId and content URL
+5. On failure: Stores error logs for debugging
+6. Frontend polls for status updates via React Query
+
+*Database Schema for Deployments*:
+- `deployments` table tracks each deployment attempt
+- Fields: id, appId, userId, status (queued/building/deploying/succeeded/failed), startedAt, completedAt, txId, contentUrl, costSats, errorLog
+- `apps` table extended with: lastDeployedAt, lastDeploymentStatus, lastDeploymentUrl
+
+*Security Considerations*:
+- User provides BSV WIF private key per deployment (HTTPS only)
+- Keys handled strictly in-memory, never persisted
+- Process logs redact all secrets
+- Rate limiting on builds and deployments
+- Sandboxed build environment
+
+*Technology Choices*:
+- Build artifacts stored in `/tmp/build-artifacts/<appId>/<deploymentId>` (filesystem for MVP)
+- React-OnChain CLI invoked via child process
+- Structured logging for debugging
+- Exponential backoff retry for transient failures
+
+**React-OnChain Integration Details**:
+- Accepts build directory (e.g., `./dist` from Vite)
+- Requires WIF private key for BSV transactions
+- Produces deployment manifest with transaction IDs and content URLs
+- Supports versioning with on-chain history tracking
+- Automatic dependency resolution and reference rewriting
+- Smart caching reuses unchanged files across deployments
 
 **Multi-Wallet Support**: Dual-wallet system supporting both Yours Wallet and Babbage Metanet via adapter pattern:
 - **Wallet Adapters** (`client/src/lib/walletAdapters.ts`): Polymorphic interface with provider-specific implementations

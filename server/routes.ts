@@ -54,19 +54,32 @@ Price: $${price}
 
 Requirements:
 1. Create a single, self-contained React component using plain JavaScript (NOT TypeScript)
-2. Use shadcn/ui components (Button, Card, Input, etc.) imported from "@/components/ui"
-3. Use Tailwind CSS for styling
-4. Make it fully functional with all necessary state management
-5. DO NOT include TypeScript type annotations (no ": type" syntax)
-6. DO NOT use TypeScript-specific features (interfaces, type aliases, etc.)
-7. Add data-testid attributes to interactive elements
-8. Keep it simple, clean, and user-friendly
-9. The component should be complete and ready to use
-10. Use regular JavaScript/JSX syntax only
+2. Use Tailwind CSS for all styling with utility classes
+3. Make it fully functional with all necessary state management using React hooks
+4. DO NOT include TypeScript type annotations (no ": type" syntax anywhere)
+5. DO NOT use TypeScript-specific features (interfaces, type aliases, generics, "as" casting, etc.)
+6. Add data-testid attributes to interactive elements for testing
+7. Keep it simple, clean, and user-friendly
+8. The component should be complete and ready to use
+9. Use regular JavaScript/JSX syntax only
+10. Build native HTML elements styled with Tailwind instead of importing UI libraries
 
-IMPORTANT: The code will run in a browser environment with Babel JSX transformer only. Do not use any TypeScript syntax.
+IMPORTANT CONSTRAINTS:
+- NO TypeScript syntax whatsoever - pure JavaScript only
+- NO external component library imports (build your own buttons, cards, inputs using Tailwind)
+- Use Tailwind CSS utility classes exclusively for styling
+- The code will run in a browser with Babel JSX transformer
+- Must be pure client-side code (no server-side dependencies)
 
-Return ONLY the React component code, no explanations. Start with the imports.`;
+STYLING GUIDELINES:
+- Use Tailwind utilities for modern, professional design
+- Include proper spacing, colors, shadows, and hover effects
+- Make it responsive with Tailwind breakpoints (sm:, md:, lg:)
+- Use rounded corners and clean layouts
+
+Return ONLY the React component code as plain JavaScript. No explanations. No TypeScript. No imports.`;
+
+
 
       let message;
       try {
