@@ -4,7 +4,7 @@ import AppCard from "@/components/AppCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,84 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import colorPaletteThumb from '@assets/generated_images/Color_palette_app_thumbnail_2355200e.png';
-import imageCompressorThumb from '@assets/generated_images/Image_compressor_app_thumbnail_ac63c26a.png';
-import invoiceGenThumb from '@assets/generated_images/Invoice_generator_app_thumbnail_415f8964.png';
-import qrCodeThumb from '@assets/generated_images/QR_code_generator_thumbnail_dc4c0971.png';
-import resumeBuilderThumb from '@assets/generated_images/Resume_builder_app_thumbnail_3699a924.png';
-import analyticsThumb from '@assets/generated_images/Analytics_dashboard_thumbnail_f07437ed.png';
+import { useQuery } from "@tanstack/react-query";
+import type { App } from "@shared/schema";
 
-//todo: remove mock functionality
-const allApps = [
-  {
-    id: "1",
-    name: "Color Palette Generator",
-    description: "Generate beautiful color palettes from images with AI-powered suggestions and export options",
-    thumbnail: colorPaletteThumb,
-    category: "Design",
-    price: 0.25,
-    rating: 4.8,
-    usageCount: 1243,
-    creator: "alice.bsv",
-  },
-  {
-    id: "2",
-    name: "Image Compressor Pro",
-    description: "Compress images up to 80% smaller while maintaining quality. Perfect for web optimization",
-    thumbnail: imageCompressorThumb,
-    category: "Media",
-    price: 0.10,
-    rating: 4.9,
-    usageCount: 2156,
-    creator: "bob.bsv",
-  },
-  {
-    id: "3",
-    name: "Invoice Generator",
-    description: "Create professional invoices instantly. Customize templates, add your brand, export PDF",
-    thumbnail: invoiceGenThumb,
-    category: "Productivity",
-    price: 0.50,
-    rating: 4.7,
-    usageCount: 891,
-    creator: "charlie.bsv",
-  },
-  {
-    id: "4",
-    name: "QR Code Designer",
-    description: "Generate branded QR codes with custom colors, logos, and shapes. Download in any size",
-    thumbnail: qrCodeThumb,
-    category: "Marketing",
-    price: 0.25,
-    rating: 4.6,
-    usageCount: 1567,
-    creator: "diana.bsv",
-  },
-  {
-    id: "5",
-    name: "Resume Builder",
-    description: "Build professional resumes with AI-enhanced bullet points. Export to PDF or Word",
-    thumbnail: resumeBuilderThumb,
-    category: "Career",
-    price: 1.00,
-    rating: 4.9,
-    usageCount: 734,
-    creator: "eve.bsv",
-  },
-  {
-    id: "6",
-    name: "Analytics Dashboard",
-    description: "Visualize your data with interactive charts and graphs. Real-time insights at a glance",
-    thumbnail: analyticsThumb,
-    category: "Analytics",
-    price: 0.75,
-    rating: 4.8,
-    usageCount: 1123,
-    creator: "frank.bsv",
-  },
-];
-
-const categories = ["All", "Design", "Media", "Productivity", "Marketing", "Career", "Analytics"];
+const categories = ["All", "Design", "Media", "Productivity", "Marketing", "Career", "Analytics", "Developer", "Finance"];
 
 export default function DiscoveryPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,11 +23,28 @@ export default function DiscoveryPage() {
   const [sortBy, setSortBy] = useState("recent");
   const [showFilters, setShowFilters] = useState(false);
 
-  const filteredApps = allApps.filter((app) => {
+  const { data: apps = [], isLoading } = useQuery<App[]>({
+    queryKey: ["/api/apps"],
+  });
+
+  const filteredApps = apps.filter((app) => {
     const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          app.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "All" || app.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && app.status === "deployed";
+  });
+
+  const sortedApps = [...filteredApps].sort((a, b) => {
+    switch (sortBy) {
+      case "recent":
+        return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+      case "price-low":
+        return parseFloat(a.price) - parseFloat(b.price);
+      case "price-high":
+        return parseFloat(b.price) - parseFloat(a.price);
+      default:
+        return 0;
+    }
   });
 
   return (
@@ -116,7 +59,7 @@ export default function DiscoveryPage() {
                 Discover Apps
               </h1>
               <p className="text-muted-foreground" data-testid="text-discovery-subtitle">
-                Browse {allApps.length} micro-SaaS apps deployed on-chain
+                Browse {apps.length} micro-SaaS apps deployed on-chain
               </p>
             </div>
 
@@ -174,12 +117,24 @@ export default function DiscoveryPage() {
 
         {/* Apps Grid */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {filteredApps.length > 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : sortedApps.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredApps.map((app) => (
+              {sortedApps.map((app) => (
                 <AppCard
                   key={app.id}
-                  {...app}
+                  id={app.id}
+                  name={app.name}
+                  description={app.description}
+                  thumbnail={app.thumbnail || "https://via.placeholder.com/400x300"}
+                  category={app.category}
+                  price={parseFloat(app.price)}
+                  rating={4.5}
+                  usageCount={0}
+                  creator="user.bsv"
                   onRun={() => console.log(`Running ${app.name}`)}
                 />
               ))}

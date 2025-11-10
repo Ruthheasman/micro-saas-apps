@@ -33,17 +33,13 @@ export default function Footer() {
             <h3 className="font-semibold">Product</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/discover">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-footer-discover">
-                    Discover Apps
-                  </a>
+                <Link href="/discover" className="hover:text-foreground transition-colors" data-testid="link-footer-discover">
+                  Discover Apps
                 </Link>
               </li>
               <li>
-                <Link href="/builder">
-                  <a className="hover:text-foreground transition-colors" data-testid="link-footer-builder">
-                    AI Builder
-                  </a>
+                <Link href="/builder" className="hover:text-foreground transition-colors" data-testid="link-footer-builder">
+                  AI Builder
                 </Link>
               </li>
               <li>

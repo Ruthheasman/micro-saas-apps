@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import StatCard from "@/components/StatCard";
 import { Card } from "@/components/ui/card";
@@ -12,30 +12,56 @@ import {
   Star,
   MoreVertical,
   Plus,
+  Loader2,
 } from "lucide-react";
-
-//todo: remove mock functionality
-const myApps = [
-  {
-    id: "1",
-    name: "Color Palette Generator",
-    status: "deployed",
-    deployments: 3,
-    revenue: 124.50,
-    uses: 498,
-  },
-  {
-    id: "2",
-    name: "QR Code Designer",
-    status: "deployed",
-    deployments: 1,
-    revenue: 89.25,
-    uses: 357,
-  },
-];
+import { useQuery } from "@tanstack/react-query";
+import type { App } from "@shared/schema";
+import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [isAuthenticated, authLoading, toast]);
+
+  const { data: myApps = [], isLoading: appsLoading } = useQuery<App[]>({
+    queryKey: ["/api/apps/my"],
+    retry: false,
+  });
+
+  const { data: stats, isLoading: statsLoading } = useQuery<{
+    totalApps: number;
+    totalRevenue: string;
+    totalUses: number;
+  }>({
+    queryKey: ["/api/stats"],
+    retry: false,
+  });
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -50,42 +76,47 @@ export default function DashboardPage() {
                 Welcome back! Here's your overview
               </p>
             </div>
-            <Button className="gap-2" data-testid="button-create-new-app">
-              <Plus className="h-4 w-4" />
-              Create New App
-            </Button>
+            <Link href="/builder">
+              <Button className="gap-2" data-testid="button-create-new-app">
+                <Plus className="h-4 w-4" />
+                Create New App
+              </Button>
+            </Link>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatCard
-              title="Total Apps"
-              value={myApps.length}
-              icon={Rocket}
-              trend={{ value: 0, isPositive: true }}
-              testId="stat-total-apps"
-            />
-            <StatCard
-              title="Total Revenue"
-              value="$213.75"
-              icon={DollarSign}
-              trend={{ value: 12.5, isPositive: true }}
-              testId="stat-total-revenue"
-            />
-            <StatCard
-              title="Total Uses"
-              value="855"
-              icon={TrendingUp}
-              trend={{ value: 8.3, isPositive: true }}
-              testId="stat-total-uses"
-            />
-            <StatCard
-              title="Avg Rating"
-              value="4.7"
-              icon={Star}
-              testId="stat-avg-rating"
-            />
-          </div>
+          {statsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <StatCard
+                title="Total Apps"
+                value={stats?.totalApps || 0}
+                icon={Rocket}
+                testId="stat-total-apps"
+              />
+              <StatCard
+                title="Total Revenue"
+                value={`$${parseFloat(stats?.totalRevenue || "0").toFixed(2)}`}
+                icon={DollarSign}
+                testId="stat-total-revenue"
+              />
+              <StatCard
+                title="Total Uses"
+                value={stats?.totalUses || 0}
+                icon={TrendingUp}
+                testId="stat-total-uses"
+              />
+              <StatCard
+                title="Avg Rating"
+                value="4.7"
+                icon={Star}
+                testId="stat-avg-rating"
+              />
+            </div>
+          )}
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -121,7 +152,7 @@ export default function DashboardPage() {
                         <div>
                           <p className="text-sm font-medium">Payment received</p>
                           <p className="text-xs text-muted-foreground">
-                            Color Palette Generator used
+                            App usage payment
                           </p>
                         </div>
                       </div>
@@ -136,51 +167,77 @@ export default function DashboardPage() {
             </TabsContent>
 
             <TabsContent value="apps" className="mt-6">
-              <Card>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="border-b">
-                      <tr>
-                        <th className="text-left p-4 font-medium">App Name</th>
-                        <th className="text-left p-4 font-medium">Status</th>
-                        <th className="text-left p-4 font-medium">Deployments</th>
-                        <th className="text-left p-4 font-medium">Revenue</th>
-                        <th className="text-left p-4 font-medium">Uses</th>
-                        <th className="text-right p-4 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {myApps.map((app) => (
-                        <tr key={app.id} className="border-b last:border-0 hover-elevate" data-testid={`row-app-${app.id}`}>
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-primary/60" />
-                              <span className="font-medium">{app.name}</span>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <Badge variant="secondary">{app.status}</Badge>
-                          </td>
-                          <td className="p-4">{app.deployments}</td>
-                          <td className="p-4 font-medium text-primary">
-                            ${app.revenue.toFixed(2)}
-                          </td>
-                          <td className="p-4">{app.uses}</td>
-                          <td className="p-4 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              data-testid={`button-app-actions-${app.id}`}
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {appsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              </Card>
+              ) : myApps.length > 0 ? (
+                <Card>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="border-b">
+                        <tr>
+                          <th className="text-left p-4 font-medium">App Name</th>
+                          <th className="text-left p-4 font-medium">Status</th>
+                          <th className="text-left p-4 font-medium">Category</th>
+                          <th className="text-left p-4 font-medium">Price</th>
+                          <th className="text-left p-4 font-medium">Created</th>
+                          <th className="text-right p-4 font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {myApps.map((app) => (
+                          <tr key={app.id} className="border-b last:border-0 hover-elevate" data-testid={`row-app-${app.id}`}>
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-primary/60" />
+                                <span className="font-medium">{app.name}</span>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <Badge variant="secondary">{app.status}</Badge>
+                            </td>
+                            <td className="p-4">{app.category}</td>
+                            <td className="p-4 font-medium text-primary">
+                              ${parseFloat(app.price).toFixed(2)}
+                            </td>
+                            <td className="p-4 text-sm text-muted-foreground">
+                              {new Date(app.createdAt!).toLocaleDateString()}
+                            </td>
+                            <td className="p-4 text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                data-testid={`button-app-actions-${app.id}`}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              ) : (
+                <Card className="p-12">
+                  <div className="text-center space-y-4">
+                    <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                      <Rocket className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-xl font-semibold">No apps yet</h3>
+                    <p className="text-muted-foreground">
+                      Create your first app to get started
+                    </p>
+                    <Link href="/builder">
+                      <Button className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Create App
+                      </Button>
+                    </Link>
+                  </div>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-6 mt-6">

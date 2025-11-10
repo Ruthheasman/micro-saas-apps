@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, Code, Eye, Settings, Loader2 } from "lucide-react";
+import { Sparkles, Code, Eye, Settings, Loader2, CheckCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -15,23 +15,121 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function BuilderPage() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("design");
   const [price, setPrice] = useState([0.25]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [hasGenerated, setHasGenerated] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [appName, setAppName] = useState("");
+  const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const handleGenerate = () => {
-    console.log("Generating app:", { description, category, price: price[0] });
-    setIsGenerating(true);
-    //todo: remove mock functionality
-    setTimeout(() => {
-      setIsGenerating(false);
-      setHasGenerated(true);
-    }, 2000);
-  };
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [isAuthenticated, authLoading, toast]);
+
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest<{ code: string; success: boolean }>("/api/generate-app", {
+        method: "POST",
+        body: JSON.stringify({ description, category, price: price[0] }),
+        headers: { "Content-Type": "application/json" },
+      });
+      return response;
+    },
+    onSuccess: (data) => {
+      setGeneratedCode(data.code);
+      toast({
+        title: "App Generated!",
+        description: "Your app has been created successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate app",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/apps", {
+        method: "POST",
+        body: JSON.stringify({
+          name: appName || "Untitled App",
+          description,
+          category,
+          price: price[0].toString(),
+          code: generatedCode,
+          status: "draft",
+        }),
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "App Saved!",
+        description: "Your app has been saved successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Save Failed",
+        description: error.message || "Failed to save app",
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -105,11 +203,11 @@ export default function BuilderPage() {
           <Button
             className="w-full gap-2"
             size="lg"
-            onClick={handleGenerate}
-            disabled={!description || isGenerating}
+            onClick={() => generateMutation.mutate()}
+            disabled={!description || generateMutation.isPending}
             data-testid="button-generate-app"
           >
-            {isGenerating ? (
+            {generateMutation.isPending ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Generating...
@@ -126,14 +224,19 @@ export default function BuilderPage() {
           <div className="space-y-4 pt-6 border-t">
             <h3 className="font-semibold">Quick Start Templates</h3>
             <div className="grid grid-cols-2 gap-3">
-              {["Color Picker", "QR Generator", "PDF Tool", "Calculator"].map((template) => (
+              {[
+                { name: "Color Picker", desc: "Create a color picker tool with hex, RGB, and HSL values" },
+                { name: "QR Generator", desc: "Create a QR code generator with custom styling" },
+                { name: "PDF Tool", desc: "Create a PDF converter and editor tool" },
+                { name: "Calculator", desc: "Create a scientific calculator with history" },
+              ].map((template) => (
                 <Card
-                  key={template}
+                  key={template.name}
                   className="p-3 cursor-pointer hover-elevate active-elevate-2 transition-all"
-                  onClick={() => setDescription(`Create a ${template.toLowerCase()}`)}
-                  data-testid={`card-template-${template.toLowerCase().replace(/\s+/g, '-')}`}
+                  onClick={() => setDescription(template.desc)}
+                  data-testid={`card-template-${template.name.toLowerCase().replace(/\s+/g, '-')}`}
                 >
-                  <p className="text-sm font-medium">{template}</p>
+                  <p className="text-sm font-medium">{template.name}</p>
                 </Card>
               ))}
             </div>
@@ -142,7 +245,7 @@ export default function BuilderPage() {
 
         {/* Right Panel - Preview & Code */}
         <div className="flex-1 flex flex-col">
-          {!hasGenerated ? (
+          {!generatedCode ? (
             <div className="flex-1 flex items-center justify-center p-12">
               <div className="text-center space-y-4 max-w-md">
                 <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -155,13 +258,9 @@ export default function BuilderPage() {
               </div>
             </div>
           ) : (
-            <Tabs defaultValue="preview" className="flex-1 flex flex-col">
+            <Tabs defaultValue="code" className="flex-1 flex flex-col">
               <div className="border-b px-6 pt-4">
                 <TabsList>
-                  <TabsTrigger value="preview" className="gap-2" data-testid="tab-preview">
-                    <Eye className="h-4 w-4" />
-                    Preview
-                  </TabsTrigger>
                   <TabsTrigger value="code" className="gap-2" data-testid="tab-code">
                     <Code className="h-4 w-4" />
                     Code
@@ -173,22 +272,9 @@ export default function BuilderPage() {
                 </TabsList>
               </div>
 
-              <TabsContent value="preview" className="flex-1 p-6 mt-0">
-                <div className="h-full border rounded-lg bg-card p-8 flex items-center justify-center">
-                  <div className="text-center space-y-4">
-                    <Badge variant="secondary">Live Preview</Badge>
-                    <p className="text-muted-foreground">
-                      Your generated app would appear here
-                    </p>
-                  </div>
-                </div>
-              </TabsContent>
-
               <TabsContent value="code" className="flex-1 p-6 mt-0">
                 <div className="h-full border rounded-lg bg-muted/50 p-6 font-mono text-sm overflow-auto">
-                  <pre className="text-muted-foreground">
-                    {`// Generated React Component\nimport { useState } from 'react';\n\nexport default function App() {\n  return (\n    <div className="p-8">\n      <h1>Your App</h1>\n    </div>\n  );\n}`}
-                  </pre>
+                  <pre className="text-foreground whitespace-pre-wrap">{generatedCode}</pre>
                 </div>
               </TabsContent>
 
@@ -200,12 +286,19 @@ export default function BuilderPage() {
                       type="text"
                       className="w-full px-3 py-2 border rounded-md"
                       placeholder="My Awesome App"
+                      value={appName}
+                      onChange={(e) => setAppName(e.target.value)}
                       data-testid="input-app-name"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Description</Label>
-                    <Textarea placeholder="Brief description of your app" data-testid="input-settings-description" />
+                    <Textarea
+                      placeholder="Brief description of your app"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      data-testid="input-settings-description"
+                    />
                   </div>
                 </Card>
               </TabsContent>
@@ -213,17 +306,32 @@ export default function BuilderPage() {
           )}
 
           {/* Bottom Action Bar */}
-          {hasGenerated && (
+          {generatedCode && (
             <div className="border-t p-6 flex items-center justify-between bg-muted/30">
               <div className="space-y-1">
-                <p className="text-sm font-medium">Ready to deploy?</p>
+                <p className="text-sm font-medium">Ready to save?</p>
                 <p className="text-xs text-muted-foreground">
-                  Estimated cost: <span className="font-semibold text-foreground">&lt;$0.01</span>
+                  Save as draft or deploy to blockchain
                 </p>
               </div>
-              <Button size="lg" data-testid="button-deploy">
-                Deploy to Blockchain
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => saveMutation.mutate()}
+                  disabled={saveMutation.isPending}
+                  data-testid="button-save-draft"
+                >
+                  {saveMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Save Draft
+                </Button>
+                <Button size="lg" data-testid="button-deploy">
+                  Deploy to Blockchain
+                </Button>
+              </div>
             </div>
           )}
         </div>
