@@ -5,10 +5,35 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import Anthropic from "@anthropic-ai/sdk";
 import { insertAppSchema } from "@shared/schema";
 import { z } from "zod";
+import { transformSync } from "@babel/core";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Validate generated code with Babel
+function validateCode(code: string): { valid: boolean; error?: string } {
+  // First check for banned syntax (imports/exports)
+  if (/^\s*import\s+/m.test(code)) {
+    return { valid: false, error: 'Code contains import statements. Remove all imports and use plain JavaScript.' };
+  }
+  if (/^\s*export\s+/m.test(code)) {
+    return { valid: false, error: 'Code contains export statements. Remove all exports and define components directly.' };
+  }
+  
+  try {
+    transformSync(code, {
+      presets: ['@babel/preset-react'],
+      filename: 'generated-app.jsx',
+      sourceType: 'script', // Enforce script semantics, not module
+    });
+    return { valid: true };
+  } catch (error: any) {
+    const message = error?.message || 'Unknown syntax error';
+    console.error('[Code Validation Error]', message);
+    return { valid: false, error: message };
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
@@ -46,7 +71,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Price must be a number between 0.05 and 10" });
       }
 
-      const prompt = `You are an expert React developer. Create a complete, production-ready React component for the following micro-SaaS app:
+      // Retry logic with validation
+      const MAX_ATTEMPTS = 3;
+      let lastError: string | undefined;
+      let validatedCode: string | null = null;
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        console.log(`[Code Generation] Attempt ${attempt}/${MAX_ATTEMPTS}`);
+
+        // Build prompt with error feedback if this is a retry
+        let prompt = `You are an expert React developer. Create a complete, production-ready React component for the following micro-SaaS app:
 
 Description: ${description}
 Category: ${category}
@@ -79,47 +113,93 @@ STYLING GUIDELINES:
 
 Return ONLY the React component code as plain JavaScript. No explanations. No TypeScript. No imports.`;
 
+        // Add error feedback for retries
+        if (attempt > 1 && lastError) {
+          prompt += `\n\nIMPORTANT: The previous attempt had a syntax error. Please fix this error and regenerate:\nError: ${lastError}`;
+        }
 
+        let message;
+        try {
+          message = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 4096,
+            messages: [
+              {
+                role: "user",
+                content: prompt,
+              },
+            ],
+          });
+        } catch (error: any) {
+          console.error(`[Code Generation] Anthropic API error on attempt ${attempt}:`, error);
+          if (error.status === 404) {
+            return res.status(503).json({ message: "AI model is currently unavailable. Please try again later." });
+          }
+          if (error.status === 401) {
+            return res.status(500).json({ message: "AI service authentication failed. Please contact support." });
+          }
+          if (error.status === 429) {
+            return res.status(429).json({ message: "AI service rate limit reached. Please try again in a few moments." });
+          }
+          // Continue to next attempt on other errors
+          if (attempt < MAX_ATTEMPTS) {
+            continue;
+          }
+          return res.status(500).json({ message: "AI service error. Please try again later." });
+        }
 
-      let message;
-      try {
-        message = await anthropic.messages.create({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4096,
-          messages: [
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
+        if (!message.content || message.content.length === 0) {
+          console.error(`[Code Generation] Empty response on attempt ${attempt}`);
+          if (attempt < MAX_ATTEMPTS) {
+            continue;
+          }
+          return res.status(500).json({ message: "AI service returned an empty response. Please try again." });
+        }
+
+        const firstContent = message.content[0];
+        if (firstContent.type !== 'text' || !firstContent.text || firstContent.text.trim().length === 0) {
+          console.error(`[Code Generation] Invalid content on attempt ${attempt}:`, firstContent);
+          if (attempt < MAX_ATTEMPTS) {
+            continue;
+          }
+          return res.status(500).json({ message: "AI service returned invalid content. Please try again." });
+        }
+
+        const generatedCode = firstContent.text;
+
+        // Validate the generated code
+        const validation = validateCode(generatedCode);
+        
+        if (validation.valid) {
+          console.log(`[Code Generation] Success on attempt ${attempt}`);
+          validatedCode = generatedCode;
+          break;
+        } else {
+          console.log(`[Code Generation] Validation failed on attempt ${attempt}: ${validation.error}`);
+          lastError = validation.error;
+          
+          // If this was the last attempt, return error
+          if (attempt === MAX_ATTEMPTS) {
+            return res.status(500).json({
+              message: `Failed to generate valid code after ${MAX_ATTEMPTS} attempts. Last error: ${validation.error}`,
+              attempts: MAX_ATTEMPTS,
+              lastError: validation.error,
+            });
+          }
+          
+          // Otherwise, continue to next attempt
+          await new Promise(resolve => setTimeout(resolve, 500)); // Short delay between retries
+        }
+      }
+
+      if (!validatedCode) {
+        return res.status(500).json({
+          message: "Failed to generate valid code. Please try again.",
         });
-      } catch (error: any) {
-        console.error("Anthropic API error:", error);
-        if (error.status === 404) {
-          return res.status(503).json({ message: "AI model is currently unavailable. Please try again later." });
-        }
-        if (error.status === 401) {
-          return res.status(500).json({ message: "AI service authentication failed. Please contact support." });
-        }
-        if (error.status === 429) {
-          return res.status(429).json({ message: "AI service rate limit reached. Please try again in a few moments." });
-        }
-        return res.status(500).json({ message: "AI service error. Please try again later." });
-      }
-
-      if (!message.content || message.content.length === 0) {
-        console.error("Anthropic returned empty response");
-        return res.status(500).json({ message: "AI service returned an empty response. Please try again." });
-      }
-
-      const firstContent = message.content[0];
-      if (firstContent.type !== 'text' || !firstContent.text || firstContent.text.trim().length === 0) {
-        console.error("Anthropic returned non-text or empty content:", firstContent);
-        return res.status(500).json({ message: "AI service returned invalid content. Please try again." });
       }
 
       res.json({
-        code: firstContent.text,
+        code: validatedCode,
         success: true,
       });
     } catch (error) {
