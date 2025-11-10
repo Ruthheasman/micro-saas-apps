@@ -10,7 +10,7 @@ import {
   type InsertAppUsage,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -136,7 +136,7 @@ export class DatabaseStorage implements IStorage {
         totalUses: sql<number>`COUNT(*)`,
       })
       .from(appUsage)
-      .where(sql`${appUsage.appId} = ANY(${appIds})`);
+      .where(inArray(appUsage.appId, appIds));
 
     return {
       totalApps: userApps.length,
