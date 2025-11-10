@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
+import WalletStatus from "@/components/WalletStatus";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -45,12 +46,13 @@ export default function BuilderPage() {
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest<{ code: string; success: boolean }>("/api/generate-app", {
-        method: "POST",
-        body: JSON.stringify({ description, category, price: price[0] }),
-        headers: { "Content-Type": "application/json" },
+      const response = await apiRequest("POST", "/api/generate-app", {
+        description,
+        category,
+        price: price[0],
       });
-      return response;
+      const data = (await response.json()) as { code: string; success: boolean };
+      return data;
     },
     onSuccess: (data) => {
       setGeneratedCode(data.code);
@@ -81,18 +83,15 @@ export default function BuilderPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/apps", {
-        method: "POST",
-        body: JSON.stringify({
-          name: appName || "Untitled App",
-          description,
-          category,
-          price: price[0].toString(),
-          code: generatedCode,
-          status: "draft",
-        }),
-        headers: { "Content-Type": "application/json" },
+      const response = await apiRequest("POST", "/api/apps", {
+        name: appName || "Untitled App",
+        description,
+        category,
+        price: price[0].toString(),
+        code: generatedCode,
+        status: "draft",
       });
+      return await response.json();
     },
     onSuccess: () => {
       toast({
@@ -219,6 +218,12 @@ export default function BuilderPage() {
               </>
             )}
           </Button>
+
+          {/* Wallet Status */}
+          <div className="space-y-4 pt-6 border-t">
+            <h3 className="font-semibold">BSV Wallet</h3>
+            <WalletStatus />
+          </div>
 
           {/* Template Gallery */}
           <div className="space-y-4 pt-6 border-t">
