@@ -9,7 +9,7 @@ export default function Footer() {
           {/* Brand Column */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-primary" style={{ fontFamily: 'serif' }}>μ</span>
+              <span className="text-3xl font-black text-primary leading-none italic" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900 }}>μ</span>
               <span className="text-xl font-bold">MicroSaaS Apps</span>
             </div>
             <p className="text-sm text-muted-foreground">

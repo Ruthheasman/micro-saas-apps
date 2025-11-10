@@ -41,7 +41,7 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 hover-elevate active-elevate-2 rounded-md px-2 py-1 -ml-2" data-testid="link-home">
-            <span className="text-2xl font-bold text-primary" style={{ fontFamily: 'serif' }}>μ</span>
+            <span className="text-3xl font-black text-primary leading-none italic" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900 }}>μ</span>
             <span className="text-xl font-bold">MicroSaaS Apps</span>
           </Link>
 
