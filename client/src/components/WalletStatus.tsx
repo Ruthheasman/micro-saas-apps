@@ -6,21 +6,32 @@ import { useWalletDetection } from "@/hooks/useWalletDetection";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
+import { getWalletAdapter } from "@/lib/walletAdapters";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function WalletStatus() {
-  const { isInstalled, isConnected, provider, connect, disconnect } = useWalletDetection();
+  const { availableProviders, selectedProvider, isConnected, connect, disconnect, selectProvider } = useWalletDetection();
   const [isConnecting, setIsConnecting] = useState(false);
   const { toast } = useToast();
 
   const handleConnect = async () => {
+    if (!selectedProvider) return;
+    
     setIsConnecting(true);
-    const result = await connect();
+    const result = await connect(selectedProvider);
     setIsConnecting(false);
 
     if (result.success) {
+      const adapter = getWalletAdapter(selectedProvider);
       toast({
         title: "Wallet Connected",
-        description: "Your Yours Wallet is now connected",
+        description: `Your ${adapter?.label} is now connected`,
       });
     } else {
       toast({
@@ -39,65 +50,113 @@ export default function WalletStatus() {
     });
   };
 
-  if (!isInstalled) {
+  if (availableProviders.length === 0) {
     return (
       <Alert className="border-muted" data-testid="alert-wallet-not-installed">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription className="flex items-center justify-between gap-4">
-          <span className="text-sm">
-            Yours Wallet not detected. Install it to deploy apps on-chain.
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 shrink-0"
-            asChild
-            data-testid="button-install-wallet"
-          >
-            <a
-              href="https://chromewebstore.google.com/detail/yours-wallet/mlbnicldlpdimbjdcncnklfempedeipj"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Install Wallet
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </Button>
+        <AlertDescription>
+          <div className="space-y-3">
+            <p className="text-sm">
+              No BSV wallet detected. Install one to deploy apps on-chain.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                asChild
+                data-testid="button-install-yours"
+              >
+                <a
+                  href="https://chromewebstore.google.com/detail/yours-wallet/mlbnicldlpdimbjdcncnklfempedeipj"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Yours Wallet
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                asChild
+                data-testid="button-install-metanet"
+              >
+                <a
+                  href="https://getmetanet.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Metanet Desktop
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </Button>
+            </div>
+          </div>
         </AlertDescription>
       </Alert>
     );
   }
 
+  const currentAdapter = selectedProvider ? getWalletAdapter(selectedProvider) : null;
+
   if (!isConnected) {
     return (
       <Card className="p-4" data-testid="card-wallet-detected">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-              <Wallet className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium" data-testid="text-wallet-provider">
-                  {provider === "yours" ? "Yours Wallet" : "BSV Wallet"}
-                </span>
-                <Badge variant="secondary" className="text-xs" data-testid="badge-wallet-status">
-                  Detected
-                </Badge>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-muted-foreground" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Connect to deploy on-chain
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium" data-testid="text-wallet-provider">
+                    {currentAdapter?.label || "BSV Wallet"}
+                  </span>
+                  <Badge variant="secondary" className="text-xs" data-testid="badge-wallet-status">
+                    Detected
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Connect to deploy on-chain
+                </p>
+              </div>
             </div>
+            <Button
+              size="sm"
+              onClick={handleConnect}
+              disabled={isConnecting || !selectedProvider}
+              data-testid="button-connect-wallet"
+            >
+              {isConnecting ? "Connecting..." : "Connect"}
+            </Button>
           </div>
-          <Button
-            size="sm"
-            onClick={handleConnect}
-            disabled={isConnecting}
-            data-testid="button-connect-wallet"
-          >
-            {isConnecting ? "Connecting..." : "Connect"}
-          </Button>
+
+          {availableProviders.length > 1 && (
+            <div className="flex items-center gap-2 pt-2 border-t">
+              <span className="text-xs text-muted-foreground">Wallet:</span>
+              <Select
+                value={selectedProvider || undefined}
+                onValueChange={(value) => selectProvider(value as any)}
+              >
+                <SelectTrigger className="h-8 text-xs flex-1" data-testid="select-wallet-provider">
+                  <SelectValue placeholder="Select wallet" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProviders.map((provider) => {
+                    const adapter = getWalletAdapter(provider);
+                    return (
+                      <SelectItem key={provider} value={provider || ""}>
+                        {adapter?.label || provider}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </Card>
     );
@@ -113,7 +172,7 @@ export default function WalletStatus() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-medium" data-testid="text-wallet-provider">
-                {provider === "yours" ? "Yours Wallet" : "BSV Wallet"}
+                {currentAdapter?.label || "BSV Wallet"}
               </span>
               <Badge variant="default" className="text-xs" data-testid="badge-wallet-status">
                 Connected

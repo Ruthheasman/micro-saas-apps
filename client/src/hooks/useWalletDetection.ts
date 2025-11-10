@@ -1,53 +1,47 @@
 import { useState, useEffect, useCallback } from "react";
-
-export type WalletProvider = "yours" | null;
+import {
+  WalletProvider,
+  detectAvailableWallets,
+  getWalletAdapter,
+} from "@/lib/walletAdapters";
 
 interface WalletInfo {
-  isInstalled: boolean;
+  availableProviders: WalletProvider[];
+  selectedProvider: WalletProvider;
   isConnected: boolean;
-  provider: WalletProvider;
-  connect: () => Promise<{ success: boolean; error?: string }>;
+  connect: (provider: WalletProvider) => Promise<{ success: boolean; error?: string }>;
   disconnect: () => void;
+  selectProvider: (provider: WalletProvider) => void;
 }
 
-declare global {
-  interface Window {
-    yours?: {
-      isReady?: boolean;
-      connect?: () => Promise<any>;
-      disconnect?: () => Promise<void>;
-      getBalance?: () => Promise<any>;
-      getAddresses?: () => Promise<string[]>;
-      sendBsv?: (params: any) => Promise<any>;
-    };
-  }
-}
+const WALLET_PROVIDER_KEY = "selected_wallet_provider";
 
 export function useWalletDetection(): WalletInfo {
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [availableProviders, setAvailableProviders] = useState<WalletProvider[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<WalletProvider>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [provider, setProvider] = useState<WalletProvider>(null);
 
   useEffect(() => {
-    const checkForWallet = () => {
-      if (typeof window.yours !== 'undefined') {
-        setIsInstalled(true);
-        setProvider("yours");
-        return true;
+    const checkForWallets = () => {
+      const detected = detectAvailableWallets();
+      setAvailableProviders(detected);
+
+      const savedProvider = localStorage.getItem(WALLET_PROVIDER_KEY) as WalletProvider;
+      if (savedProvider && detected.includes(savedProvider)) {
+        setSelectedProvider(savedProvider);
+      } else if (detected.length > 0) {
+        setSelectedProvider(detected[0]);
       }
-      return false;
     };
 
-    if (checkForWallet()) {
-      return;
-    }
+    checkForWallets();
 
     const timeout = setTimeout(() => {
-      checkForWallet();
+      checkForWallets();
     }, 1000);
 
     const handleYoursInitialized = () => {
-      checkForWallet();
+      checkForWallets();
     };
 
     window.addEventListener('yours#initialized', handleYoursInitialized);
@@ -58,62 +52,58 @@ export function useWalletDetection(): WalletInfo {
     };
   }, []);
 
-  const connect = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
-    if (typeof window.yours === 'undefined') {
+  const connect = useCallback(async (provider: WalletProvider): Promise<{ success: boolean; error?: string }> => {
+    if (!provider) {
       return {
         success: false,
-        error: "Yours Wallet not detected. Please install it from the Chrome Web Store.",
+        error: "No wallet provider selected",
       };
     }
 
-    try {
-      if (window.yours.connect) {
-        await window.yours.connect();
-      }
-      setIsConnected(true);
-      return { success: true };
-    } catch (error) {
-      console.error("Wallet connection error:", error);
-      setIsConnected(false);
+    const adapter = getWalletAdapter(provider);
+    if (!adapter) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to connect wallet",
+        error: "Invalid wallet provider",
       };
     }
+
+    const result = await adapter.connect();
+    if (result.success) {
+      setIsConnected(true);
+      setSelectedProvider(provider);
+      localStorage.setItem(WALLET_PROVIDER_KEY, provider);
+    } else {
+      setIsConnected(false);
+    }
+
+    return result;
   }, []);
 
   const disconnect = useCallback(() => {
-    setIsConnected(false);
-    if (window.yours?.disconnect) {
-      window.yours.disconnect().catch(console.error);
+    if (selectedProvider) {
+      const adapter = getWalletAdapter(selectedProvider);
+      adapter?.disconnect();
     }
+    setIsConnected(false);
+  }, [selectedProvider]);
+
+  const selectProvider = useCallback((provider: WalletProvider) => {
+    setSelectedProvider(provider);
+    if (provider) {
+      localStorage.setItem(WALLET_PROVIDER_KEY, provider);
+    } else {
+      localStorage.removeItem(WALLET_PROVIDER_KEY);
+    }
+    setIsConnected(false);
   }, []);
 
   return {
-    isInstalled,
+    availableProviders,
+    selectedProvider,
     isConnected,
-    provider,
     connect,
     disconnect,
+    selectProvider,
   };
-}
-
-export async function getWalletBalance(): Promise<{ balance: number; error?: string }> {
-  if (typeof window.yours === 'undefined' || !window.yours.getBalance) {
-    return {
-      balance: 0,
-      error: "Wallet not available",
-    };
-  }
-
-  try {
-    const balance = await window.yours.getBalance();
-    return { balance: balance || 0 };
-  } catch (error) {
-    console.error("Error fetching balance:", error);
-    return {
-      balance: 0,
-      error: error instanceof Error ? error.message : "Failed to fetch balance",
-    };
-  }
 }
