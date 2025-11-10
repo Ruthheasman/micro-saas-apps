@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import StatCard from "@/components/StatCard";
 import { Card } from "@/components/ui/card";
@@ -10,17 +11,17 @@ import {
   DollarSign,
   TrendingUp,
   Star,
-  MoreVertical,
+  ExternalLink,
   Plus,
   Loader2,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { App } from "@shared/schema";
-import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -206,11 +207,14 @@ export default function DashboardPage() {
                             </td>
                             <td className="p-4 text-right">
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                data-testid={`button-app-actions-${app.id}`}
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => setLocation(`/app/${app.id}`)}
+                                data-testid={`button-view-app-${app.id}`}
                               >
-                                <MoreVertical className="h-4 w-4" />
+                                <ExternalLink className="h-4 w-4" />
+                                View App
                               </Button>
                             </td>
                           </tr>

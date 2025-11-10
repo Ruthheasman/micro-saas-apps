@@ -7,6 +7,7 @@ import HomePage from "@/pages/HomePage";
 import BuilderPage from "@/pages/BuilderPage";
 import DiscoveryPage from "@/pages/DiscoveryPage";
 import DashboardPage from "@/pages/DashboardPage";
+import AppRuntimePage from "@/pages/AppRuntimePage";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/builder" component={BuilderPage} />
       <Route path="/discover" component={DiscoveryPage} />
       <Route path="/dashboard" component={DashboardPage} />
+      <Route path="/app/:id" component={AppRuntimePage} />
       <Route component={NotFound} />
     </Switch>
   );

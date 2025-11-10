@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import AppCard from "@/components/AppCard";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import type { App } from "@shared/schema";
 const categories = ["All", "Design", "Media", "Productivity", "Marketing", "Career", "Analytics", "Developer", "Finance"];
 
 export default function DiscoveryPage() {
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("recent");
@@ -135,7 +137,7 @@ export default function DiscoveryPage() {
                   rating={4.5}
                   usageCount={0}
                   creator="user.bsv"
-                  onRun={() => console.log(`Running ${app.name}`)}
+                  onRun={() => setLocation(`/app/${app.id}`)}
                 />
               ))}
             </div>
