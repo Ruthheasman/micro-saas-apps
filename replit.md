@@ -87,6 +87,19 @@ Preferred communication style: Simple, everyday language.
 
 **Deployment Strategy**: Apps deployed via React-OnChain library (`danwag06/react-onchain`), enabling sub-penny deployment costs and permanent on-chain storage. Each app becomes a tradable blockchain asset.
 
+**Wallet Detection**: Yours Wallet browser extension detection implemented via `useWalletDetection` hook:
+- Detects wallet installation by checking for `window.yours` object
+- Tracks separate states for wallet detected vs connected
+- Provides connect/disconnect functionality with proper state management
+- WalletStatus component shows three states: not installed, detected but not connected, and fully connected
+- Non-blocking UX - users can use the platform without wallet installed
+
+**Wallet Integration Flow**:
+1. Detection: Check for Yours Wallet on page load and window events
+2. Connection: User clicks "Connect" to authorize wallet access
+3. State tracking: Maintains `isConnected` flag only after successful connection
+4. Disconnect: User can explicitly disconnect to reset state
+
 **BSV SDK**: Integration with `@bsv-blockchain/ts-sdk` for blockchain operations (planned/in development).
 
 **Cost Model**: Deployment costs less than $0.01 per app, eliminating traditional hosting fees. Apps remain accessible permanently without recurring costs.
