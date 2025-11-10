@@ -53,14 +53,18 @@ Category: ${category}
 Price: $${price}
 
 Requirements:
-1. Create a single, self-contained React component using TypeScript
+1. Create a single, self-contained React component using plain JavaScript (NOT TypeScript)
 2. Use shadcn/ui components (Button, Card, Input, etc.) imported from "@/components/ui"
 3. Use Tailwind CSS for styling
 4. Make it fully functional with all necessary state management
-5. Include proper TypeScript types
-6. Add data-testid attributes to interactive elements
-7. Keep it simple, clean, and user-friendly
-8. The component should be complete and ready to use
+5. DO NOT include TypeScript type annotations (no ": type" syntax)
+6. DO NOT use TypeScript-specific features (interfaces, type aliases, etc.)
+7. Add data-testid attributes to interactive elements
+8. Keep it simple, clean, and user-friendly
+9. The component should be complete and ready to use
+10. Use regular JavaScript/JSX syntax only
+
+IMPORTANT: The code will run in a browser environment with Babel JSX transformer only. Do not use any TypeScript syntax.
 
 Return ONLY the React component code, no explanations. Start with the imports.`;
 
