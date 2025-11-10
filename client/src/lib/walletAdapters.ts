@@ -100,6 +100,30 @@ class BabbageWalletAdapter implements WalletAdapter {
     }
 
     try {
+      const { isAuthenticated, waitForAuthentication } = await import('@babbage/sdk-ts');
+      
+      let authenticated = await isAuthenticated();
+      
+      if (!authenticated) {
+        authenticated = await waitForAuthentication();
+        
+        if (!authenticated) {
+          return {
+            success: false,
+            error: "Authentication was cancelled or failed. Please try again.",
+          };
+        }
+        
+        authenticated = await isAuthenticated();
+        
+        if (!authenticated) {
+          return {
+            success: false,
+            error: "Failed to establish authenticated session.",
+          };
+        }
+      }
+
       return { success: true };
     } catch (error) {
       console.error("Babbage wallet connection error:", error);
