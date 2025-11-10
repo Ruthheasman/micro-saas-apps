@@ -15,7 +15,7 @@ const features = [
   {
     icon: Shield,
     title: "True Ownership",
-    description: "Your app lives on-chain as a 1Sat ordinal. Censorship-resistant, permanent, and truly yours.",
+    description: "Your app lives on-chain as a blockchain ordinal. Censorship-resistant, permanent, and truly yours.",
   },
   {
     icon: TrendingUp,
