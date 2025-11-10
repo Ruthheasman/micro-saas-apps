@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Rocket, Github, Twitter, Mail } from "lucide-react";
+import { Github, Twitter, Mail } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -9,8 +9,8 @@ export default function Footer() {
           {/* Brand Column */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Rocket className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">1Sat Apps</span>
+              <span className="text-2xl font-bold text-primary" style={{ fontFamily: 'serif' }}>μ</span>
+              <span className="text-xl font-bold">MicroSaaS Apps</span>
             </div>
             <p className="text-sm text-muted-foreground">
               Build, deploy, and monetize micro-SaaS apps on the BSV blockchain for less than a penny.
@@ -107,7 +107,7 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
-          <p>© 2025 1Sat Apps. Built on BSV Blockchain. Deploy for &lt;$0.01</p>
+          <p>© 2025 MicroSaaS Apps. Built on BSV Blockchain. Deploy for &lt;$0.01</p>
         </div>
       </div>
     </footer>

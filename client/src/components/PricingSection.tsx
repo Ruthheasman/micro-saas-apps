@@ -10,7 +10,7 @@ export default function PricingSection() {
             Simple, Transparent Pricing
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-testid="text-pricing-subtitle">
-            Compare traditional hosting vs 1Sat Apps
+            Compare traditional hosting vs MicroSaaS Apps
           </p>
         </div>
 
@@ -61,7 +61,7 @@ export default function PricingSection() {
             </div>
             <div className="space-y-2">
               <h3 className="text-2xl font-bold" data-testid="text-1sat-title">
-                1Sat Apps
+                MicroSaaS Apps
               </h3>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-bold text-primary">&lt;$0.01</span>

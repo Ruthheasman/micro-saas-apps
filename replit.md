@@ -1,8 +1,8 @@
-# 1Sat Apps - Micro-SaaS Platform
+# MicroSaaS Apps - Micro-SaaS Platform
 
 ## Overview
 
-1Sat Apps is a platform for building, deploying, and monetizing micro-SaaS applications on the BSV blockchain. The platform enables users to describe applications in natural language, have AI (Claude) generate production-ready React code, and deploy these apps to the blockchain for less than a penny. Apps are stored as 1Sat ordinals on-chain, providing permanent, censorship-resistant hosting with pay-per-use monetization.
+MicroSaaS Apps is a platform for building, deploying, and monetizing micro-SaaS applications on the BSV blockchain. The platform enables users to describe applications in natural language, have AI (Claude) generate production-ready React code, and deploy these apps to the blockchain for less than a penny. Apps are stored as 1Sat ordinals on-chain, providing permanent, censorship-resistant hosting with pay-per-use monetization.
 
 The platform consists of four main products:
 - **1Sat Builder**: AI-powered app creation and blockchain deployment interface

@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Rocket, Menu, X, LogOut, User } from "lucide-react";
+import { Menu, X, LogOut, User } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -41,8 +41,8 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 hover-elevate active-elevate-2 rounded-md px-2 py-1 -ml-2" data-testid="link-home">
-            <Rocket className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">1Sat Apps</span>
+            <span className="text-2xl font-bold text-primary" style={{ fontFamily: 'serif' }}>μ</span>
+            <span className="text-xl font-bold">MicroSaaS Apps</span>
           </Link>
 
           {/* Desktop Navigation */}
