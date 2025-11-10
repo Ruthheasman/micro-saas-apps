@@ -87,18 +87,27 @@ Preferred communication style: Simple, everyday language.
 
 **Deployment Strategy**: Apps deployed via React-OnChain library (`danwag06/react-onchain`), enabling sub-penny deployment costs and permanent on-chain storage. Each app becomes a tradable blockchain asset.
 
-**Wallet Detection**: Yours Wallet browser extension detection implemented via `useWalletDetection` hook:
-- Detects wallet installation by checking for `window.yours` object
-- Tracks separate states for wallet detected vs connected
-- Provides connect/disconnect functionality with proper state management
-- WalletStatus component shows three states: not installed, detected but not connected, and fully connected
-- Non-blocking UX - users can use the platform without wallet installed
+**Multi-Wallet Support**: Dual-wallet system supporting both Yours Wallet and Babbage Metanet via adapter pattern:
+- **Wallet Adapters** (`client/src/lib/walletAdapters.ts`): Polymorphic interface with provider-specific implementations
+  - `YoursWalletAdapter`: Browser extension detection via `window.yours`
+  - `BabbageWalletAdapter`: Desktop/mobile app detection via `window.CWI` with SDK authentication
+- **Detection**: Automatically detects all available wallets on page load
+- **Provider Selection**: Users can choose between wallets when multiple are detected
+- **Persistence**: Selected wallet preference saved to localStorage
+- **Connection States**: Separate tracking for detected vs authenticated state per wallet
 
 **Wallet Integration Flow**:
-1. Detection: Check for Yours Wallet on page load and window events
-2. Connection: User clicks "Connect" to authorize wallet access
-3. State tracking: Maintains `isConnected` flag only after successful connection
-4. Disconnect: User can explicitly disconnect to reset state
+1. Detection: Check for both `window.yours` (Yours Wallet) and `window.CWI` (Babbage/Metanet)
+2. Selection: Auto-select last-used wallet or first detected; user can switch via dropdown
+3. Connection: 
+   - Yours: Call `window.yours.connect()` to authorize
+   - Babbage: Use `@babbage/sdk-ts` with `isAuthenticated()` and `waitForAuthentication()`
+4. Validation: Only report connected after successful authentication completes
+5. Disconnect: User can explicitly disconnect; clears connected state
+
+**Supported Wallets**:
+- **Yours Wallet**: Chrome browser extension for BSV transactions
+- **Metanet (Babbage)**: Desktop (macOS/Linux/Windows) and mobile (iOS/Android) BSV wallet using BRC100 protocol
 
 **BSV SDK**: Integration with `@bsv-blockchain/ts-sdk` for blockchain operations (planned/in development).
 
