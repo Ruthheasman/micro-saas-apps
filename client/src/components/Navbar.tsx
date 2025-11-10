@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X, LogOut, User } from "lucide-react";
+import { Menu, X, LogOut, User, Wallet, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -11,12 +11,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { useWalletDetection } from "@/hooks/useWalletDetection";
+import { getWalletAdapter } from "@/lib/walletAdapters";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Navbar() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [walletPopoverOpen, setWalletPopoverOpen] = useState(false);
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { availableProviders, selectedProvider, isConnected, connect, disconnect, selectProvider } = useWalletDetection();
+  const { toast } = useToast();
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -34,6 +54,40 @@ export default function Navbar() {
     }
     return user.email?.[0]?.toUpperCase() || "U";
   };
+
+  const handleWalletConnect = async () => {
+    if (!selectedProvider) return;
+    
+    setIsConnecting(true);
+    const result = await connect(selectedProvider);
+    setIsConnecting(false);
+
+    if (result.success) {
+      const adapter = getWalletAdapter(selectedProvider);
+      toast({
+        title: "Wallet Connected",
+        description: `Your ${adapter?.label} is now connected`,
+      });
+      setWalletPopoverOpen(false);
+    } else {
+      toast({
+        title: "Connection Failed",
+        description: result.error || "Failed to connect wallet",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleWalletDisconnect = () => {
+    disconnect();
+    toast({
+      title: "Wallet Disconnected",
+      description: "Your wallet has been disconnected",
+    });
+    setWalletPopoverOpen(false);
+  };
+
+  const currentAdapter = selectedProvider ? getWalletAdapter(selectedProvider) : null;
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -64,7 +118,133 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Actions */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
+            {/* Wallet Status */}
+            <Popover open={walletPopoverOpen} onOpenChange={setWalletPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="relative"
+                  data-testid="button-wallet-status"
+                >
+                  <Wallet className="h-5 w-5" />
+                  {isConnected && (
+                    <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="end">
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm">BSV Wallet</h4>
+                  
+                  {availableProviders.length === 0 ? (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <p>No BSV wallet detected. Install one to deploy apps on-chain.</p>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="justify-start gap-2"
+                          asChild
+                        >
+                          <a
+                            href="https://chromewebstore.google.com/detail/yours-wallet/mlbnicldlpdimbjdcncnklfempedeipj"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Yours Wallet
+                            <ExternalLink className="h-3 w-3 ml-auto" />
+                          </a>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="justify-start gap-2"
+                          asChild
+                        >
+                          <a
+                            href="https://getmetanet.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Metanet Desktop
+                            <ExternalLink className="h-3 w-3 ml-auto" />
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : isConnected ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-sm font-medium">{currentAdapter?.label}</span>
+                        <Badge variant="default" className="ml-auto text-xs">Connected</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Your wallet is ready for blockchain deployment
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleWalletDisconnect}
+                        className="w-full"
+                      >
+                        Disconnect
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4" />
+                        <span className="text-sm font-medium">{currentAdapter?.label}</span>
+                        <Badge variant="secondary" className="ml-auto text-xs">Detected</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Connect to enable blockchain deployment
+                      </p>
+                      
+                      {availableProviders.length > 1 && (
+                        <div className="space-y-2">
+                          <label className="text-xs text-muted-foreground">Select Wallet</label>
+                          <Select
+                            value={selectedProvider || undefined}
+                            onValueChange={(value) => selectProvider(value as any)}
+                          >
+                            <SelectTrigger className="h-9 text-sm">
+                              <SelectValue placeholder="Select wallet" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableProviders.map((provider) => {
+                                const adapter = getWalletAdapter(provider);
+                                return (
+                                  <SelectItem key={provider} value={provider || ""}>
+                                    {adapter?.label || provider}
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      
+                      <Button
+                        size="sm"
+                        onClick={handleWalletConnect}
+                        disabled={isConnecting || !selectedProvider}
+                        className="w-full"
+                      >
+                        {isConnecting ? "Connecting..." : "Connect Wallet"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
             {!isLoading && (
               <>
                 {isAuthenticated && user ? (

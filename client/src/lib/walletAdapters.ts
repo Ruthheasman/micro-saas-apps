@@ -86,38 +86,11 @@ class BabbageWalletAdapter implements WalletAdapter {
   id: WalletProvider = "babbage";
   label = "Metanet (Babbage)";
   installUrl = "https://getmetanet.com";
-  
-  private isAvailable: boolean | null = null;
 
   detect(): boolean {
-    if (this.isAvailable !== null) {
-      console.log('[Babbage] Cached availability:', this.isAvailable);
-      return this.isAvailable;
-    }
-    
-    if (typeof window.CWI !== 'undefined') {
-      console.log('[Babbage] Detected via window.CWI');
-      this.isAvailable = true;
-      return true;
-    }
-    
-    console.log('[Babbage] window.CWI not found, checking SDK availability...');
-    this.checkAvailability();
-    return false;
-  }
-  
-  private async checkAvailability() {
-    try {
-      console.log('[Babbage] Attempting SDK detection...');
-      const { isAuthenticated } = await import('@babbage/sdk-ts');
-      const result = await isAuthenticated();
-      console.log('[Babbage] SDK detection result:', result);
-      this.isAvailable = true;
-      window.dispatchEvent(new Event('wallet-detected'));
-    } catch (error) {
-      console.error('[Babbage] SDK detection failed:', error);
-      this.isAvailable = false;
-    }
+    const detected = typeof window.CWI !== 'undefined';
+    console.log('[Babbage] Detection check:', { hasWindowCWI: detected });
+    return detected;
   }
 
   async connect(): Promise<{ success: boolean; error?: string }> {
@@ -129,30 +102,16 @@ class BabbageWalletAdapter implements WalletAdapter {
     }
 
     try {
-      const { isAuthenticated, waitForAuthentication } = await import('@babbage/sdk-ts');
+      console.log('[Babbage] Attempting to connect via window.CWI...');
       
-      let authenticated = await isAuthenticated();
-      
-      if (!authenticated) {
-        authenticated = await waitForAuthentication();
-        
-        if (!authenticated) {
-          return {
-            success: false,
-            error: "Authentication was cancelled or failed. Please try again.",
-          };
-        }
-        
-        authenticated = await isAuthenticated();
-        
-        if (!authenticated) {
-          return {
-            success: false,
-            error: "Failed to establish authenticated session.",
-          };
-        }
+      if (!window.CWI) {
+        return {
+          success: false,
+          error: "Metanet client interface not available.",
+        };
       }
 
+      console.log('[Babbage] Connected successfully via window.CWI');
       return { success: true };
     } catch (error) {
       console.error("Babbage wallet connection error:", error);
