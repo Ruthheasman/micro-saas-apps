@@ -27,11 +27,20 @@ Preferred communication style: Simple, everyday language.
 - `/builder` - AI-powered app builder interface
 - `/discover` - App marketplace/discovery
 - `/dashboard` - User dashboard for managing apps
+- `/test/:appName` - Isolated testing environment for generated apps
+- `/app/:id` - Runtime page for deployed apps
 
 **State Management**: 
 - TanStack Query (React Query) for server state management, API requests, and caching
+- React Context for ephemeral cross-page state (TestAppContext for sharing generated code)
 - React hooks for local component state
 - No global state management library needed due to server-state-first approach
+
+**Test Environment**: Builder includes a "Test App" feature that allows developers to preview generated apps in isolation at `/test/:appName`. The test page provides:
+- Isolated preview of AI-generated code
+- Toggle between rendered preview and source code view
+- Component refresh without losing context
+- Navigation back to builder for iteration
 
 **Styling**: Tailwind CSS with extensive customization including custom color schemes, shadows, and utility classes for elevation effects (`hover-elevate`, `active-elevate-2`). Supports both light and dark modes through CSS variables.
 
