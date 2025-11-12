@@ -3,9 +3,10 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import Anthropic from "@anthropic-ai/sdk";
-import { insertAppSchema } from "@shared/schema";
+import { insertAppSchema, insertAgentSchema } from "@shared/schema";
 import { z } from "zod";
 import { parse } from "@babel/parser";
+import { executeAgent } from "./lib/agentExecutor";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -361,6 +362,186 @@ Return ONLY the React component code as plain JavaScript. No explanations. No Ty
     } catch (error) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.get('/api/credits', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const credits = await storage.getUserCredits(userId);
+      res.json({ balance: credits });
+    } catch (error) {
+      console.error("Error fetching credits:", error);
+      res.status(500).json({ message: "Failed to fetch credits" });
+    }
+  });
+
+  app.post('/api/credits/purchase', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { amount, txId } = req.body;
+
+      if (!amount || typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ message: "Invalid credit amount" });
+      }
+
+      const user = await storage.addCredits(userId, amount, txId);
+      res.json({ balance: user.creditBalance });
+    } catch (error) {
+      console.error("Error purchasing credits:", error);
+      res.status(500).json({ message: "Failed to purchase credits" });
+    }
+  });
+
+  app.get('/api/credits/transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactions = await storage.getUserCreditTransactions(userId);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching credit transactions:", error);
+      res.status(500).json({ message: "Failed to fetch credit transactions" });
+    }
+  });
+
+  app.get('/api/agents', async (req, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const agents = await storage.getAllAgents(category);
+      res.json(agents);
+    } catch (error) {
+      console.error("Error fetching agents:", error);
+      res.status(500).json({ message: "Failed to fetch agents" });
+    }
+  });
+
+  app.get('/api/agents/featured', async (req, res) => {
+    try {
+      const agents = await storage.getFeaturedAgents();
+      res.json(agents);
+    } catch (error) {
+      console.error("Error fetching featured agents:", error);
+      res.status(500).json({ message: "Failed to fetch featured agents" });
+    }
+  });
+
+  app.get('/api/agents/my', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const agents = await storage.getAgentsByUser(userId);
+      res.json(agents);
+    } catch (error) {
+      console.error("Error fetching user agents:", error);
+      res.status(500).json({ message: "Failed to fetch agents" });
+    }
+  });
+
+  app.get('/api/agents/:id', async (req, res) => {
+    try {
+      const agent = await storage.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+      res.json(agent);
+    } catch (error) {
+      console.error("Error fetching agent:", error);
+      res.status(500).json({ message: "Failed to fetch agent" });
+    }
+  });
+
+  app.post('/api/agents', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const validation = insertAgentSchema.safeParse({ ...req.body, userId });
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid agent data", errors: validation.error.errors });
+      }
+
+      const agent = await storage.createAgent(validation.data);
+      res.json(agent);
+    } catch (error) {
+      console.error("Error creating agent:", error);
+      res.status(500).json({ message: "Failed to create agent" });
+    }
+  });
+
+  app.patch('/api/agents/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const agent = await storage.getAgent(req.params.id);
+
+      if (!agent) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      if (agent.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const validation = insertAgentSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid agent data", errors: validation.error.errors });
+      }
+
+      const updatedAgent = await storage.updateAgent(req.params.id, validation.data);
+      res.json(updatedAgent);
+    } catch (error) {
+      console.error("Error updating agent:", error);
+      res.status(500).json({ message: "Failed to update agent" });
+    }
+  });
+
+  app.delete('/api/agents/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const agent = await storage.getAgent(req.params.id);
+
+      if (!agent) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      if (agent.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      await storage.deleteAgent(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting agent:", error);
+      res.status(500).json({ message: "Failed to delete agent" });
+    }
+  });
+
+  app.post('/api/agents/:id/run', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const agentId = req.params.id;
+      const { inputData } = req.body;
+
+      const result = await executeAgent(agentId, userId, inputData);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json({ success: true, output: result.output });
+    } catch (error) {
+      console.error("Error running agent:", error);
+      res.status(500).json({ message: "Failed to run agent" });
+    }
+  });
+
+  app.get('/api/runs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const run = await storage.getAgentRun(req.params.id);
+      if (!run) {
+        return res.status(404).json({ message: "Run not found" });
+      }
+      res.json(run);
+    } catch (error) {
+      console.error("Error fetching run:", error);
+      res.status(500).json({ message: "Failed to fetch run" });
     }
   });
 
