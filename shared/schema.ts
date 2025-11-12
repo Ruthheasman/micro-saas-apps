@@ -59,7 +59,7 @@ export const appUsage = pgTable("app_usage", {
 
 export const agents = pgTable("agents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   description: text("description").notNull(),
   category: text("category").notNull(),
