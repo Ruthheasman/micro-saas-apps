@@ -73,6 +73,9 @@ export const agents = pgTable("agents", {
   usageCount: integer("usage_count").notNull().default(0),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
   status: text("status").notNull().default("draft"),
+  conversationStarters: jsonb("conversation_starters"),
+  customCss: text("custom_css"),
+  themeSettings: jsonb("theme_settings"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -1,25 +1,31 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Sparkles, Loader2, Video, Image as ImageIcon, MessageSquare, Zap } from "lucide-react";
+import { ArrowLeft, Sparkles, Loader2, Video, Image as ImageIcon, MessageSquare, Zap, Send, Bot, User } from "lucide-react";
 import type { Agent } from "@shared/schema";
+
+interface Message {
+  role: "user" | "agent";
+  content: string;
+  output?: any;
+  timestamp: Date;
+}
 
 export default function AgentRunner() {
   const [, params] = useRoute("/agents/:id");
   const [, setLocation] = useLocation();
   const agentId = params?.id;
   const { toast } = useToast();
-  const [inputValues, setInputValues] = useState<Record<string, any>>({});
-  const [result, setResult] = useState<any>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: agent, isLoading } = useQuery<Agent>({
     queryKey: ['/api/agents', agentId],
@@ -29,6 +35,14 @@ export default function AgentRunner() {
   const { data: credits = 0 } = useQuery<number>({
     queryKey: ['/api/credits'],
   });
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const runMutation = useMutation({
     mutationFn: async (inputData: Record<string, any>) => {
@@ -44,12 +58,13 @@ export default function AgentRunner() {
       return response.json();
     },
     onSuccess: (data: any) => {
-      setResult(data.output);
+      setMessages(prev => [...prev, {
+        role: "agent",
+        content: data.output?.text || "Generated result",
+        output: data.output,
+        timestamp: new Date(),
+      }]);
       queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
-      toast({
-        title: "Success!",
-        description: "Agent executed successfully",
-      });
     },
     onError: (error: any) => {
       toast({
@@ -57,15 +72,16 @@ export default function AgentRunner() {
         description: error.message || "Failed to run agent",
         variant: "destructive",
       });
+      setMessages(prev => [...prev, {
+        role: "agent",
+        content: `Error: ${error.message}`,
+        timestamp: new Date(),
+      }]);
     },
   });
 
-  const handleInputChange = (name: string, value: any) => {
-    setInputValues(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleRun = () => {
-    if (!agent) return;
+  const handleSend = () => {
+    if (!inputValue.trim() || !agent) return;
     
     if (credits < agent.creditCost) {
       toast({
@@ -76,7 +92,31 @@ export default function AgentRunner() {
       return;
     }
 
-    runMutation.mutate(inputValues);
+    const userMessage = inputValue;
+    setInputValue("");
+
+    setMessages(prev => [...prev, {
+      role: "user",
+      content: userMessage,
+      timestamp: new Date(),
+    }]);
+
+    const inputData: Record<string, any> = {};
+    const inputSchema = (agent.inputSchema as any) || [];
+    
+    if (inputSchema.length > 0) {
+      inputSchema.forEach((field: any) => {
+        inputData[field.name] = userMessage;
+      });
+    } else {
+      inputData.prompt = userMessage;
+    }
+
+    runMutation.mutate(inputData);
+  };
+
+  const handleConversationStarter = (starter: string) => {
+    setInputValue(starter);
   };
 
   if (isLoading) {
@@ -95,28 +135,28 @@ export default function AgentRunner() {
       <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
         <main className="flex-1 flex items-center justify-center">
-          <Card className="max-w-md">
-            <CardContent className="pt-6 text-center">
-              <p className="text-muted-foreground">Agent not found</p>
-              <Button onClick={() => setLocation("/agents")} className="mt-4" data-testid="button-back-marketplace">
-                Back to Marketplace
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="text-center">
+            <p className="text-muted-foreground mb-4">Agent not found</p>
+            <Button onClick={() => setLocation("/agents")} data-testid="button-back-marketplace">
+              Back to Marketplace
+            </Button>
+          </div>
         </main>
       </div>
     );
   }
 
-  const inputSchema = (agent.inputSchema as any) || [];
+  const conversationStarters = (agent.conversationStarters as any) || [];
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1">
-        <div className="border-b bg-muted/30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-center gap-4 mb-4">
+      
+      {/* Chat Header */}
+      <div className="border-b bg-muted/30">
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
@@ -125,180 +165,168 @@ export default function AgentRunner() {
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                  <Sparkles className="w-8 h-8 text-primary" />
-                  {agent.name}
-                </h1>
-                <p className="text-muted-foreground mt-1">{agent.description}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  {agent.modelProvider}
-                </Badge>
-                <Badge variant="default">
-                  {agent.category}
-                </Badge>
+              <Avatar>
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  <Bot className="w-5 h-5" />
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="font-semibold text-lg">{agent.name}</h1>
+                <p className="text-xs text-muted-foreground">{agent.category}</p>
               </div>
             </div>
-
-            <div className="flex items-center justify-between p-4 bg-background border rounded-lg">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Zap className="w-5 h-5 text-yellow-600" />
-                <span>Cost: {agent.creditCost} credits</span>
-              </div>
-              <div className="text-muted-foreground">
-                Your balance: <span className="text-foreground font-semibold">{credits}</span> credits
-              </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                <Zap className="w-3 h-3 mr-1 text-yellow-600" />
+                {agent.creditCost} credits
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                Balance: {credits}
+              </Badge>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Input</CardTitle>
-                <CardDescription>
-                  Provide the required information to run this agent
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {inputSchema.length === 0 ? (
-                  <p className="text-muted-foreground">No inputs required</p>
-                ) : (
-                  inputSchema.map((field: any) => (
-                    <div key={field.name} className="space-y-2">
-                      <Label>{field.label}</Label>
-                      {field.type === "textarea" ? (
-                        <Textarea
-                          placeholder={field.label}
-                          value={inputValues[field.name] || ""}
-                          onChange={(e) => handleInputChange(field.name, e.target.value)}
-                          data-testid={`input-${field.name}`}
-                        />
-                      ) : (
-                        <Input
-                          type={field.type || "text"}
-                          placeholder={field.label}
-                          value={inputValues[field.name] || ""}
-                          onChange={(e) => handleInputChange(field.name, e.target.value)}
-                          data-testid={`input-${field.name}`}
-                        />
-                      )}
-                    </div>
-                  ))
-                )}
-
-                <Button
-                  onClick={handleRun}
-                  disabled={runMutation.isPending || credits < agent.creditCost}
-                  className="w-full"
-                  data-testid="button-run-agent"
+      {/* Chat Messages */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-4 py-6">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Sparkles className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Start a conversation</h2>
+              <p className="text-muted-foreground mb-6 max-w-md">
+                {agent.description}
+              </p>
+              
+              {conversationStarters.length > 0 && (
+                <div className="space-y-2 w-full max-w-md">
+                  <p className="text-sm text-muted-foreground mb-3">Try asking:</p>
+                  <div className="flex flex-col gap-2">
+                    {conversationStarters.map((starter: any, idx: number) => (
+                      <Button
+                        key={idx}
+                        variant="outline"
+                        className="justify-start text-left h-auto py-3 px-4"
+                        onClick={() => handleConversationStarter(typeof starter === 'string' ? starter : starter.text)}
+                        data-testid={`button-starter-${idx}`}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2 flex-shrink-0" />
+                        <span className="whitespace-normal">
+                          {typeof starter === 'string' ? starter : starter.text}
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {messages.map((message, idx) => (
+                <div
+                  key={idx}
+                  className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                  data-testid={`message-${message.role}-${idx}`}
                 >
-                  {runMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Running...
-                    </>
-                  ) : (
-                    "Run Agent"
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Output</CardTitle>
-                <CardDescription>
-                  Results will appear here after execution
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {!result ? (
-                  <div className="flex items-center justify-center py-12 text-muted-foreground">
-                    <div className="text-center">
-                      <Sparkles className="w-12 h-12 mx-auto mb-3" />
-                      <p>Run the agent to see results</p>
+                  <Avatar className="flex-shrink-0">
+                    <AvatarFallback className={message.role === 'agent' ? 'bg-primary text-primary-foreground' : 'bg-muted'}>
+                      {message.role === 'agent' ? <Bot className="w-5 h-5" /> : <User className="w-5 h-5" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className={`flex flex-col gap-2 max-w-[70%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div className={`rounded-2xl px-4 py-3 ${
+                      message.role === 'user' 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-muted'
+                    }`}>
+                      <p className="text-sm whitespace-pre-wrap" data-testid={`message-content-${idx}`}>
+                        {message.content}
+                      </p>
+                    </div>
+                    
+                    {message.output && (
+                      <div className="w-full space-y-3">
+                        {message.output.type === "video" && message.output.video_url && (
+                          <div className="rounded-lg overflow-hidden border bg-card">
+                            <video
+                              src={message.output.video_url}
+                              controls
+                              className="w-full"
+                              data-testid={`output-video-${idx}`}
+                            />
+                          </div>
+                        )}
+                        
+                        {message.output.type === "image" && message.output.image_url && (
+                          <div className="rounded-lg overflow-hidden border bg-card">
+                            <img
+                              src={message.output.image_url}
+                              alt="Generated"
+                              className="w-full"
+                              data-testid={`output-image-${idx}`}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <span className="text-xs text-muted-foreground px-2">
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              
+              {runMutation.isPending && (
+                <div className="flex gap-3">
+                  <Avatar className="flex-shrink-0">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      <Bot className="w-5 h-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="rounded-2xl px-4 py-3 bg-muted">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Thinking...</span>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {result.type === "video" && result.video_url && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-primary">
-                          <Video className="w-4 h-4" />
-                          <span className="text-sm font-medium">Generated Video</span>
-                        </div>
-                        <video
-                          src={result.video_url}
-                          controls
-                          className="w-full rounded-lg bg-muted"
-                          data-testid="output-video"
-                        />
-                        <a
-                          href={result.video_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline text-sm"
-                        >
-                          Open in new tab
-                        </a>
-                      </div>
-                    )}
-
-                    {result.type === "image" && result.image_url && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-primary">
-                          <ImageIcon className="w-4 h-4" />
-                          <span className="text-sm font-medium">Generated Image</span>
-                        </div>
-                        <img
-                          src={result.image_url}
-                          alt="Generated"
-                          className="w-full rounded-lg"
-                          data-testid="output-image"
-                        />
-                        <a
-                          href={result.image_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline text-sm"
-                        >
-                          Open in new tab
-                        </a>
-                      </div>
-                    )}
-
-                    {result.text && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-primary">
-                          <MessageSquare className="w-4 h-4" />
-                          <span className="text-sm font-medium">Text Response</span>
-                        </div>
-                        <div className="p-4 bg-muted rounded-lg border">
-                          <p className="whitespace-pre-wrap" data-testid="output-text">
-                            {result.text}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {!result.type && !result.text && (
-                      <div className="p-4 bg-muted rounded-lg border">
-                        <pre className="text-sm overflow-auto" data-testid="output-json">
-                          {JSON.stringify(result, null, 2)}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Chat Input */}
+      <div className="border-t bg-background">
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Type your message..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              disabled={runMutation.isPending}
+              className="flex-1"
+              data-testid="input-chat-message"
+            />
+            <Button
+              onClick={handleSend}
+              disabled={!inputValue.trim() || runMutation.isPending || credits < agent.creditCost}
+              size="icon"
+              data-testid="button-send-message"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
