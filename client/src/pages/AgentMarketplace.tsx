@@ -7,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Sparkles, Video, Image as ImageIcon, MessageSquare, Zap, Loader2 } from "lucide-react";
+import { Search, Sparkles, Video, Image as ImageIcon, MessageSquare, Zap, Loader2, Edit } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import type { Agent } from "@shared/schema";
 
 export default function AgentMarketplace() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const { user } = useAuth();
 
   const { data: agents = [], isLoading } = useQuery<Agent[]>({
     queryKey: ['/api/agents'],
@@ -144,9 +146,19 @@ export default function AgentMarketplace() {
                     </div>
                   </CardContent>
 
-                  <CardFooter>
+                  <CardFooter className="gap-2">
+                    {user?.id === agent.userId && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setLocation(`/builder/agent/${agent.id}`)}
+                        data-testid={`button-edit-agent-${agent.id}`}
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                    )}
                     <Button
-                      className="w-full"
+                      className="flex-1"
                       onClick={() => setLocation(`/agents/${agent.id}`)}
                       data-testid={`button-run-agent-${agent.id}`}
                     >
