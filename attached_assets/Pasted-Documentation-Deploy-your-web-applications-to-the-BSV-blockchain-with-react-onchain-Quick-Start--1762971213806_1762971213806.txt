@@ -1,0 +1,192 @@
+Documentation
+Deploy your web applications to the BSV blockchain with react-onchain
+
+Quick Start
+Deploy to the blockchain in two simple steps.
+
+
+# 1. Build your app
+npm run build
+
+# 2. Deploy to blockchain
+npx react-onchain deploy
+Note: Use an Ordinals-compatible wallet like yours.org to protect your inscriptions.
+
+Installation
+No installation needed! Just use npx to deploy.
+
+For Users
+Simply run the deploy command:
+
+
+npx react-onchain deploy
+For Developers/Contributors
+Clone and build from source:
+
+
+git clone https://github.com/danwag06/react-onchain.git
+cd react-onchain
+npm install
+npm run build
+
+# Or install globally for development
+npm install -g .
+React Router Setup
+If your app uses React Router, add this one line to make it work with onchain deployments.
+
+One-Line Setup
+
+import { BrowserRouter as Router } from 'react-router-dom';
+
+function App() {
+  return (
+    <Router basename={(window as any).__REACT_ONCHAIN_BASE__ || '/'}>
+      {/* Your routes */}
+    </Router>
+  );
+}
+That's it! This single line makes your React Router app work with onchain deployments AND locally:
+
+When deployed: Uses /content/{txid}_{vout}
+Locally: Falls back to '/'
+On custom domains: Automatically uses '/'
+Deployment
+Deploy your application with interactive prompts or CLI flags.
+
+Interactive Deployment (Recommended)
+The CLI guides you through setup:
+
+
+npx react-onchain deploy
+First deployment prompts:
+
+
+? Select build directory: ./dist
+? Enter payment private key (WIF): **********************
+? Enable versioning? Yes
+? Enter version tag (e.g., 1.0.0): 1.0.0
+? Enter version description: Initial release
+? Enter application name: MyDApp
+Automated Deployment
+Use flags for CI/CD pipelines:
+
+
+npx react-onchain deploy \
+  --build-dir ./dist \
+  --payment-key L1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z \
+  --version-tag "1.0.0" \
+  --version-description "Initial release" \
+  --app-name "MyDApp"
+Dry Run Mode
+Test deployments without spending satoshis:
+
+
+npx react-onchain deploy --dry-run
+Inscribe Files
+The inscribe command allows you to inscribe individual files to the BSV blockchain. Unlike deploy which handles entire applications, inscribe is a lower-level utility for inscribing single files directly.
+
+Basic Usage
+
+npx react-onchain inscribe ./image.png
+With Options
+
+# Using B:// protocol (default)
+npx react-onchain inscribe ./document.pdf \
+  --payment-key "your-wif-key" \
+  --protocol b
+
+# Using 1Sat Ordinals protocol
+npx react-onchain inscribe ./rare-nft.png --protocol 1sat
+
+# Custom content type and fee rate
+npx react-onchain inscribe ./video.mp4 \
+  --content-type "video/mp4" \
+  --sats-per-kb 10
+Available Options
+Flag	Description	Default
+--payment-key	Payment private key in WIF format	From .env
+--protocol	Protocol: 'b' (B://) or '1sat' (1Sat Ordinals)	b
+--destination	Destination address for inscription	Payment address
+--sats-per-kb	Satoshis per KB for transaction fees	From config
+--content-type	MIME content type	Auto-detected
+Supported File Types
+Web & Documents
+.html, .css, .js, .json, .pdf, .txt, .xml, .csv, .md
+
+Images
+.png, .jpg, .gif, .svg, .webp, .ico, .bmp, .tiff
+
+Video & Audio
+.mp4, .webm, .mp3, .wav, .m4a, .ogg
+
+Fonts & Other
+.woff, .woff2, .ttf, .wasm, .zip, .tar, .gz
+
+Use Cases: Perfect for inscribing individual assets, testing inscriptions, creating standalone inscriptions, or quick one-off inscriptions without needing a full project structure.
+
+Versioning & History
+Every deployment is automatically versioned with unlimited history tracked onchain.
+
+Managing Versions
+
+# Deploy new version (prompts for version info)
+npx react-onchain deploy
+
+# View all versions
+npx react-onchain version:history
+
+# Access specific version via URL
+https://app.reactonchain.com/content/<ORIGIN>?version=1.0.0
+Configuration is saved in .env after your first deployment. Subsequent deployments only prompt for new version information.
+
+Smart Caching
+Unchanged files are automatically reused from previous deployments, reducing costs by up to 97%.
+
+New inscriptions:
+2 files (7.28 KB)
+Cached files:
+4 files (230.17 KB)
+Cost savings:
+~97% reduction
+CLI Usage
+Complete CLI command reference.
+
+Available Commands
+
+# Deploy application (interactive prompts)
+npx react-onchain deploy
+
+# Inscribe a single file
+npx react-onchain inscribe <file>
+
+# Query version history (onchain)
+npx react-onchain version:history [versioningOriginInscription]
+
+# Get version details (onchain)
+npx react-onchain version:info <version> [versioningOriginInscription]
+
+# Get inscription info (onchain)
+npx react-onchain version:summary [versioningOriginInscription]
+
+# View deployment history (local)
+npx react-onchain manifest:history
+Deploy Command Flags
+Flag	Description	Default
+--build-dir	Build directory to deploy	./dist
+--payment-key	Payment private key (WIF format)	Prompted
+--sats-per-kb	Satoshis per KB for fees	1
+--dry-run	Test without broadcasting	false
+--version-tag	Version identifier (e.g., "1.0.0")	Prompted
+--app-name	Application name for versioning	Prompted
+Cost Estimation
+Typical costs at 1 sat/KB (based on $40 BSV price):
+
+App Type	Size	Cost (sats)	Cost (USD)
+Simple SPA	200 KB	~200	~$0.00008
+Medium App	500 KB	~500	~$0.0002
+Large App	1 MB	~1,000	~$0.0004
+Complex App	2 MB	~2,000	~$0.0008
+Need Help?
+Check out the full documentation on GitHub or reach out to the community.
+
+Full Documentation
