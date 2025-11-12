@@ -10,6 +10,9 @@ import DiscoveryPage from "@/pages/DiscoveryPage";
 import DashboardPage from "@/pages/DashboardPage";
 import AppRuntimePage from "@/pages/AppRuntimePage";
 import TestAppPage from "@/pages/TestAppPage";
+import AgentMarketplace from "@/pages/AgentMarketplace";
+import AgentBuilder from "@/pages/AgentBuilder";
+import AgentRunner from "@/pages/AgentRunner";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -21,6 +24,9 @@ function Router() {
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/app/:id" component={AppRuntimePage} />
       <Route path="/test/:appName" component={TestAppPage} />
+      <Route path="/agents" component={AgentMarketplace} />
+      <Route path="/builder/agent" component={AgentBuilder} />
+      <Route path="/agents/:id" component={AgentRunner} />
       <Route component={NotFound} />
     </Switch>
   );
