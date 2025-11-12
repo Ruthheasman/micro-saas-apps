@@ -146,7 +146,9 @@ export default function AgentRunner() {
     );
   }
 
-  const conversationStarters = (agent.conversationStarters as any) || [];
+  const conversationStarters = Array.isArray(agent.conversationStarters) 
+    ? agent.conversationStarters 
+    : [];
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
