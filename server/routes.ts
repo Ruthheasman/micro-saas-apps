@@ -7,7 +7,6 @@ import { insertAppSchema, insertAgentSchema } from "@shared/schema";
 import { z } from "zod";
 import { parse } from "@babel/parser";
 import { executeAgent } from "./lib/agentExecutor";
-import { BlockchainDeployer } from "./lib/blockchainDeployer";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -563,91 +562,6 @@ Return ONLY the React component code as plain JavaScript. No explanations. No Ty
     } catch (error) {
       console.error("Error generating icon:", error);
       res.status(500).json({ message: "Failed to generate icon" });
-    }
-  });
-
-  app.post('/api/agents/:id/deploy', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const agent = await storage.getAgent(req.params.id);
-
-      if (!agent) {
-        return res.status(404).json({ message: "Agent not found" });
-      }
-
-      if (agent.userId !== userId) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      const { paymentKey, versionTag, versionDescription, dryRun } = req.body;
-
-      if (!paymentKey || typeof paymentKey !== 'string') {
-        return res.status(400).json({ message: "Payment key (WIF format) is required" });
-      }
-
-      const result = await BlockchainDeployer.deployAgent(agent, {
-        paymentKey,
-        versionTag,
-        versionDescription,
-        originInscription: agent.chainOriginInscription || undefined,
-        dryRun: dryRun || false,
-      });
-
-      const updateData: any = {
-        chainTxid: result.txid,
-        chainVout: result.vout,
-        deployedAt: new Date(),
-      };
-
-      if (!agent.chainOriginInscription && result.txid) {
-        updateData.chainOriginInscription = `${result.txid}_${result.vout}`;
-      }
-
-      const updatedAgent = await storage.updateAgent(agent.id, updateData);
-
-      if (!updatedAgent) {
-        return res.status(500).json({ message: "Failed to update agent after deployment" });
-      }
-
-      res.json({
-        success: true,
-        deployment: {
-          txid: result.txid,
-          vout: result.vout,
-          contentUrl: result.contentUrl,
-          cost: result.cost,
-          originInscription: updatedAgent.chainOriginInscription,
-        },
-        agent: updatedAgent,
-      });
-    } catch (error: any) {
-      console.error("Error deploying agent:", error);
-      res.status(500).json({ 
-        message: "Failed to deploy agent to blockchain",
-        error: error.message 
-      });
-    }
-  });
-
-  app.get('/api/agents/:id/estimate-cost', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const agent = await storage.getAgent(req.params.id);
-
-      if (!agent) {
-        return res.status(404).json({ message: "Agent not found" });
-      }
-
-      if (agent.userId !== userId) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      const estimatedCost = await BlockchainDeployer.estimateCost(agent);
-
-      res.json({ estimatedCost });
-    } catch (error) {
-      console.error("Error estimating deployment cost:", error);
-      res.status(500).json({ message: "Failed to estimate cost" });
     }
   });
 
