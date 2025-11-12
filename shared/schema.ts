@@ -77,6 +77,10 @@ export const agents = pgTable("agents", {
   conversationStarters: jsonb("conversation_starters"),
   customCss: text("custom_css"),
   themeSettings: jsonb("theme_settings"),
+  chainTxid: text("chain_txid"),
+  chainVout: integer("chain_vout"),
+  chainOriginInscription: text("chain_origin_inscription"),
+  deployedAt: timestamp("deployed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
