@@ -42,6 +42,7 @@ export default function Navbar() {
     { href: "/", label: "Home" },
     { href: "/discover", label: "Discover Apps" },
     { href: "/builder", label: "AI Builder" },
+    { href: "/agents", label: "AI Agents" },
     { href: "/dashboard", label: "Dashboard" },
   ];
 

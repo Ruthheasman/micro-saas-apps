@@ -2,13 +2,20 @@
 
 ## Overview
 
-MicroSaaS Apps is a platform for building, deploying, and monetizing micro-SaaS applications on the BSV blockchain. The platform enables users to describe applications in natural language, have AI (Claude) generate production-ready React code, and deploy these apps to the blockchain for less than a penny. Apps are stored as 1Sat ordinals on-chain, providing permanent, censorship-resistant hosting with pay-per-use monetization.
+MicroSaaS Apps is a hybrid platform for deploying micro-SaaS applications on the BSV blockchain and creating/executing AI agents. It allows users to describe applications in natural language, generate production-ready React code via AI, and deploy them to the blockchain at minimal cost. The platform also features creation, discovery, and execution of specialized AI agents.
 
-The platform consists of four main products:
-- **1Sat Builder**: AI-powered app creation and blockchain deployment interface
-- **1Sat Apps**: Discovery marketplace for finding and using deployed apps
-- **1Sat Chain**: Visual workflow builder for chaining apps together (planned)
-- **User Dashboard**: Analytics and management for created apps
+The platform's core capabilities include:
+
+**Micro-SaaS Apps Section:**
+- AI-powered application builder (1Sat Builder)
+- Marketplace for discovering deployed apps (1Sat Apps)
+- User dashboard for app management
+
+**AI Agents Section:**
+- Marketplace for AI agents
+- Interface for building custom agents
+- Execution environment for agents
+- Credit-based payment system for agent usage
 
 ## User Preferences
 
@@ -18,244 +25,67 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 
-**Framework**: React 18 with TypeScript, built using Vite for fast development and optimized production builds.
-
-**UI Component System**: The application uses shadcn/ui components built on Radix UI primitives, providing accessible, customizable components. The design system follows a "New York" style variant with custom theming through CSS variables defined in Tailwind configuration.
-
-**Routing**: Client-side routing implemented with Wouter, a lightweight alternative to React Router. Routes include:
-- `/` - Marketing landing page
-- `/builder` - AI-powered app builder interface
-- `/discover` - App marketplace/discovery
-- `/dashboard` - User dashboard for managing apps
-- `/test/:appName` - Isolated testing environment for generated apps
-- `/app/:id` - Runtime page for deployed apps
-
-**State Management**: 
-- TanStack Query (React Query) for server state management, API requests, and caching
-- React Context for ephemeral cross-page state (TestAppContext for sharing generated code)
-- React hooks for local component state
-- No global state management library needed due to server-state-first approach
-
-**Test Environment**: Builder includes a "Test App" feature that allows developers to preview generated apps in isolation at `/test/:appName`. The test page provides:
-- Isolated preview of AI-generated code
-- Toggle between rendered preview and source code view
-- Component refresh without losing context
-- Navigation back to builder for iteration
-
-**Styling**: Tailwind CSS with extensive customization including custom color schemes, shadows, and utility classes for elevation effects (`hover-elevate`, `active-elevate-2`). Supports both light and dark modes through CSS variables.
-
-**Design Philosophy**: Hybrid approach drawing from Linear's minimalism, Vercel's developer clarity, and Material Design principles. Typography uses Inter for UI elements and JetBrains Mono for code/technical content.
+The frontend is built with React 18 and TypeScript using Vite. It utilizes `shadcn/ui` components based on Radix UI for an accessible and customizable UI with a "New York" style theme. Client-side routing is handled by Wouter. State management primarily uses TanStack Query for server state and React Context for ephemeral UI state. Styling is managed with Tailwind CSS, supporting both light and dark modes. A dedicated testing environment allows isolated previews of AI-generated code.
 
 ### Backend Architecture
 
-**Server Framework**: Express.js running on Node.js with TypeScript.
-
-**Authentication**: OpenID Connect (OIDC) integration with Replit's authentication system using Passport.js strategy. Session management handled via `express-session` with PostgreSQL storage (`connect-pg-simple`). Sessions persist for 7 days with secure, httpOnly cookies.
-
-**API Structure**: RESTful endpoints under `/api/` prefix:
-- `/api/auth/*` - Authentication endpoints (login, logout, user info)
-- `/api/generate-app` - AI code generation endpoint
-- `/api/apps/*` - App CRUD operations
-- `/api/apps/my` - User's apps
-- `/api/stats` - User statistics
-
-**Development Server**: In development, Vite middleware is integrated into Express for HMR (Hot Module Replacement) and asset serving. Production builds serve static files from `dist/public`.
-
-**Error Handling**: Centralized error handling with logging middleware. Request/response logging tracks API calls with timing information.
+The backend is an Express.js application written in TypeScript. Authentication is managed via OpenID Connect (OIDC) with Replit's system using Passport.js and `express-session` with PostgreSQL storage. The API is RESTful, providing endpoints for micro-SaaS app management, AI agent operations, and user credits. Development uses Vite middleware for HMR, while production serves static files. Centralized error handling and request logging are implemented.
 
 ### Data Storage Solutions
 
-**Database**: PostgreSQL via Neon serverless driver (`@neondatabase/serverless`) with WebSocket support for efficient connection pooling.
-
-**ORM**: Drizzle ORM provides type-safe database operations with schema-first approach. Migration files stored in `/migrations` directory.
-
-**Schema Design**:
-- `users` - User profiles with OAuth data (id, email, firstName, lastName, profileImageUrl)
-- `apps` - Micro-SaaS applications (id, userId, name, description, category, price, code, thumbnail, status, deploymentTxId)
-- `appUsage` - Usage tracking for revenue (id, appId, userId, usedAt, amountPaid)
-- `sessions` - Express session storage
-
-**Storage Pattern**: Repository pattern implemented through `DatabaseStorage` class in `server/storage.ts`, providing abstraction over direct database access with methods for CRUD operations and aggregations.
+PostgreSQL, via Neon's serverless driver, is used for data storage. Drizzle ORM provides type-safe database interactions. Key schemas include `users`, `apps`, `appUsage`, `agents`, `agentRuns`, `creditTransactions`, and `sessions`. A Repository pattern abstracts database access.
 
 ### AI Integration
 
-**Provider**: Anthropic Claude API (`@anthropic-ai/sdk`) for code generation.
+The platform features dual AI integration systems:
 
-**Generation Flow**:
-1. User provides app description, category, and price
-2. Backend sends prompt to Claude requesting complete React component
-3. AI generates production-ready code
-4. **Code Validation**: Backend validates syntax using `@babel/parser`
-5. **Auto-Retry**: If validation fails, retries up to 3 times with error context
-6. Validated code returned to frontend for preview
-7. User can test, iterate, or deploy
+**Micro-SaaS App Generation:**
+- Anthropic Claude API for AI code generation
+- Natural language to React component transformation
+- Code validation using `@babel/parser` for syntax correctness
+- Auto-retry mechanism for fixing validation failures
+- Prompt engineering for production-ready, self-contained React code with Tailwind CSS
 
-**Error Detection & Auto-Fix System**:
-- **Syntax Validation**: Uses `@babel/parser` with JSX plugins to verify code syntax
-- **Import/Export Detection**: Regex checks prevent module syntax (import/export statements)
-- **Smart Retry Logic**: Up to 3 generation attempts with error messages included in retry prompts
-- **Parser-Based Approach**: Avoids false positives from transform pipeline (e.g., template literal issues)
-- **Validation Plugins**: Supports JSX, class properties, optional chaining, nullish coalescing
-- **Strict Parsing**: `errorRecovery: false` ensures genuine syntax errors are caught
-- **Logging**: All validation attempts and results logged for debugging
-
-**Prompt Engineering**: System prompts emphasize production-ready plain JavaScript code (no TypeScript) with Tailwind CSS styling and native HTML elements. Generated apps are self-contained React components that avoid external library imports.
-
-**Code Generation Constraints**:
-- Pure JavaScript only (no TypeScript syntax, type annotations, or interfaces)
-- No external component library imports (builds native HTML with Tailwind)
-- Must work in browser with Babel JSX transformer
-- Pure client-side code (no server dependencies)
-- Self-contained and ready for build pipeline
-- No import/export statements (validated and rejected automatically)
+**AI Agent System:**
+- **OpenRouter Integration**: Provides access to chat LLMs (Claude, GPT-4, Llama) via managed Replit integration
+- **kie.ai Integration**: Powers video/image generation models:
+  - Veo 3 / Veo 3.1: Text-to-video generation
+  - Sora 2 Pro: Advanced video synthesis
+  - nano-banana: AI-powered image editing
+  - Seedance: Image-to-video animation
+- **Agent Executor**: Routes requests to appropriate provider based on model type
+- **Credit System**: Transactional credit deduction on successful execution
+- **Lazy Loading**: kie.ai client gracefully degrades when API key unavailable
 
 ### Blockchain Integration
 
-**Target Blockchain**: BSV (Bitcoin SV) blockchain using 1Sat ordinals protocol.
-
-**Deployment Strategy**: Apps deployed via React-OnChain CLI tool (`danwag06/react-onchain`), enabling sub-penny deployment costs and permanent on-chain storage. Each app becomes a tradable blockchain asset.
-
-**Build Pipeline Architecture** (Planned Implementation):
-
-*Current State*: AI generates single React components stored as code strings. Components can be previewed in-app but are not yet deployable to blockchain.
-
-*Planned Architecture*:
-1. **Server-Side Build Worker**: Background worker runs builds in isolated temp directories
-2. **Vite Project Template**: Pre-configured template with Tailwind CSS, committed to repo
-3. **Component Injection**: Generated component injected into template's `src/App.jsx`
-4. **Build Process**: Runs `npm install` (cached) and `npm run build` to create static files
-5. **Blockchain Deployment**: Invokes `npx react-onchain deploy` with build artifacts
-6. **Result Tracking**: Stores deployment status, transaction ID, and content URL
-
-*Deployment Workflow*:
-1. User clicks "Deploy to Blockchain" in dashboard
-2. Backend enqueues deployment job (status: queued)
-3. Worker picks job and executes build pipeline
-4. On success: Updates app with txId and content URL
-5. On failure: Stores error logs for debugging
-6. Frontend polls for status updates via React Query
-
-*Database Schema for Deployments*:
-- `deployments` table tracks each deployment attempt
-- Fields: id, appId, userId, status (queued/building/deploying/succeeded/failed), startedAt, completedAt, txId, contentUrl, costSats, errorLog
-- `apps` table extended with: lastDeployedAt, lastDeploymentStatus, lastDeploymentUrl
-
-*Security Considerations*:
-- User provides BSV WIF private key per deployment (HTTPS only)
-- Keys handled strictly in-memory, never persisted
-- Process logs redact all secrets
-- Rate limiting on builds and deployments
-- Sandboxed build environment
-
-*Technology Choices*:
-- Build artifacts stored in `/tmp/build-artifacts/<appId>/<deploymentId>` (filesystem for MVP)
-- React-OnChain CLI invoked via child process
-- Structured logging for debugging
-- Exponential backoff retry for transient failures
-
-**React-OnChain Integration Details**:
-- Accepts build directory (e.g., `./dist` from Vite)
-- Requires WIF private key for BSV transactions
-- Produces deployment manifest with transaction IDs and content URLs
-- Supports versioning with on-chain history tracking
-- Automatic dependency resolution and reference rewriting
-- Smart caching reuses unchanged files across deployments
-
-**Multi-Wallet Support**: Dual-wallet system supporting both Yours Wallet and Babbage Metanet via adapter pattern:
-- **Wallet Adapters** (`client/src/lib/walletAdapters.ts`): Polymorphic interface with provider-specific implementations
-  - `YoursWalletAdapter`: Browser extension detection via `window.yours`
-  - `BabbageWalletAdapter`: Desktop/mobile app detection via `window.CWI` with SDK authentication
-- **Detection**: Automatically detects all available wallets on page load
-- **Provider Selection**: Users can choose between wallets when multiple are detected
-- **Persistence**: Selected wallet preference saved to localStorage
-- **Connection States**: Separate tracking for detected vs authenticated state per wallet
-
-**Wallet Integration Flow**:
-1. Detection: Check for both `window.yours` (Yours Wallet) and `window.CWI` (Babbage/Metanet)
-2. Selection: Auto-select last-used wallet or first detected; user can switch via dropdown
-3. Connection: 
-   - Yours: Call `window.yours.connect()` to authorize
-   - Babbage: Use `@babbage/sdk-ts` with `isAuthenticated()` and `waitForAuthentication()`
-4. Validation: Only report connected after successful authentication completes
-5. Disconnect: User can explicitly disconnect; clears connected state
-
-**Supported Wallets**:
-- **Yours Wallet**: Chrome browser extension for BSV transactions
-- **Metanet (Babbage)**: Desktop (macOS/Linux/Windows) and mobile (iOS/Android) BSV wallet using BRC100 protocol
-
-**BSV SDK**: Integration with `@bsv-blockchain/ts-sdk` for blockchain operations (planned/in development).
-
-**Cost Model**: Deployment costs less than $0.01 per app, eliminating traditional hosting fees. Apps remain accessible permanently without recurring costs.
+The platform targets the BSV (Bitcoin SV) blockchain using the 1Sat ordinals protocol for app deployment. Apps are deployed via the React-OnChain CLI, enabling permanent, low-cost on-chain storage. The planned build pipeline involves a server-side worker injecting generated components into a Vite template, building static files, and then deploying them to the blockchain. The system will support multi-wallet integration, including Yours Wallet and Babbage Metanet, through an adapter pattern.
 
 ## External Dependencies
 
 ### Third-Party Services
 
-**Anthropic Claude API**
-- Purpose: AI code generation for micro-SaaS apps
-- Configuration: Requires `ANTHROPIC_API_KEY` environment variable
-- Usage: Generates React components from natural language descriptions
-
-**Replit Authentication**
-- Purpose: User authentication and identity management
-- Configuration: Requires `ISSUER_URL`, `REPL_ID`, and `SESSION_SECRET`
-- Integration: OpenID Connect with Passport.js
-
-**Neon Database**
-- Purpose: Serverless PostgreSQL hosting
-- Configuration: Requires `DATABASE_URL` environment variable
-- Features: WebSocket-based connections for serverless environments
+- **Anthropic Claude API**: For AI code generation.
+- **Replit Authentication**: For user authentication via OpenID Connect.
+- **Neon Database**: Serverless PostgreSQL hosting.
 
 ### Blockchain & Web3
 
-**BSV Blockchain**
-- Purpose: Permanent app storage and deployment
-- Integration: Via React-OnChain library
-- Cost: Sub-penny deployment through 1Sat ordinals
-
-**React-OnChain** (`danwag06/react-onchain`)
-- Purpose: Deploy React apps to BSV blockchain
-- Features: Permanent hosting, censorship resistance, sub-penny costs
-- Status: Core integration for deployment functionality
+- **BSV Blockchain**: For permanent app storage and deployment.
+- **React-OnChain**: Library for deploying React apps to BSV blockchain.
+- **Yours Wallet / Babbage Metanet**: Supported BSV wallets.
 
 ### UI & Component Libraries
 
-**Radix UI** (Multiple packages)
-- Purpose: Accessible, unstyled UI primitives
-- Components: Dialogs, dropdowns, tooltips, tabs, forms, and 20+ others
-- Integration: Wrapped by shadcn/ui components
-
-**shadcn/ui**
-- Configuration: `components.json` with New York style preset
-- Structure: Components in `client/src/components/ui/`
-- Theming: CSS variables in Tailwind config
+- **Radix UI**: Accessible, unstyled UI primitives.
+- **shadcn/ui**: Themed UI components built on Radix UI.
 
 ### Development Tools
 
-**Vite**
-- Purpose: Build tool and dev server
-- Plugins: React, runtime error overlay, Replit integration
-- Features: Fast HMR, optimized production builds
-
-**TypeScript**
-- Configuration: Strict mode, ESNext modules
-- Path Aliases: `@/*` for client, `@shared/*` for shared code
-- Integration: Full type safety across frontend and backend
+- **Vite**: Build tool and dev server.
+- **TypeScript**: For type-safe development.
 
 ### Asset Management
 
-**Google Fonts**
-- Fonts: Inter (UI), JetBrains Mono (code), DM Sans, Geist Mono, Architects Daughter, Fira Code
-- Loading: Via CDN links in `client/index.html`
-
-**Static Assets**
-- Location: `attached_assets/generated_images/` for app thumbnails
-- Reference: Imported via Vite's `@assets` alias
-- Format: PNG images for hero backgrounds and app previews
-
-### Development Environment
-
-**Replit-Specific**
-- Plugins: Cartographer (mapping), Dev Banner (development mode indicator)
-- Runtime: Error overlay for better debugging
-- Condition: Only loaded in development mode when `REPL_ID` exists
+- **Google Fonts**: For UI and code typography (Inter, JetBrains Mono, etc.).
+- **Static Assets**: Stored locally for app thumbnails and hero images.
