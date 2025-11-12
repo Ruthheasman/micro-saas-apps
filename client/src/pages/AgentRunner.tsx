@@ -8,13 +8,21 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Sparkles, Loader2, Video, Image as ImageIcon, MessageSquare, Zap, Send, Bot, User } from "lucide-react";
+import { ArrowLeft, Sparkles, Loader2, Video, Image as ImageIcon, MessageSquare, Zap, Send, Bot, User, Paperclip, X } from "lucide-react";
 import type { Agent } from "@shared/schema";
+
+interface ImageAttachment {
+  dataUrl: string;
+  name: string;
+  size: number;
+  type: string;
+}
 
 interface Message {
   role: "user" | "agent";
   content: string;
   output?: any;
+  attachments?: ImageAttachment[];
   timestamp: Date;
 }
 
@@ -25,7 +33,9 @@ export default function AgentRunner() {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: agent, isLoading } = useQuery<Agent>({
     queryKey: ['/api/agents', agentId],
@@ -82,8 +92,52 @@ export default function AgentRunner() {
     },
   });
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    files.forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload image files only",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (file.size > 4 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Images must be under 4MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setAttachments(prev => [...prev, {
+          dataUrl,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = () => {
-    if (!inputValue.trim() || !agent) return;
+    if ((!inputValue.trim() && attachments.length === 0) || !agent) return;
     
     if (credits < agent.creditCost) {
       toast({
@@ -95,11 +149,14 @@ export default function AgentRunner() {
     }
 
     const userMessage = inputValue;
+    const userAttachments = [...attachments];
     setInputValue("");
+    setAttachments([]);
 
     setMessages(prev => [...prev, {
       role: "user",
       content: userMessage,
+      attachments: userAttachments,
       timestamp: new Date(),
     }]);
 
@@ -112,6 +169,10 @@ export default function AgentRunner() {
       });
     } else {
       inputData.prompt = userMessage;
+    }
+
+    if (userAttachments.length > 0) {
+      inputData.images = userAttachments.map(att => att.dataUrl);
     }
 
     runMutation.mutate(inputData);
@@ -242,15 +303,30 @@ export default function AgentRunner() {
                   </Avatar>
                   
                   <div className={`flex flex-col gap-2 max-w-[70%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
-                    <div className={`rounded-2xl px-4 py-3 ${
-                      message.role === 'user' 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-muted'
-                    }`}>
-                      <p className="text-sm whitespace-pre-wrap" data-testid={`message-content-${idx}`}>
-                        {message.content}
-                      </p>
-                    </div>
+                    {message.attachments && message.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {message.attachments.map((att, attIdx) => (
+                          <img
+                            key={attIdx}
+                            src={att.dataUrl}
+                            alt={att.name}
+                            className="rounded-lg max-w-xs border"
+                            data-testid={`message-attachment-${idx}-${attIdx}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {message.content && (
+                      <div className={`rounded-2xl px-4 py-3 ${
+                        message.role === 'user' 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted'
+                      }`}>
+                        <p className="text-sm whitespace-pre-wrap" data-testid={`message-content-${idx}`}>
+                          {message.content}
+                        </p>
+                      </div>
+                    )}
                     
                     {message.output && (
                       <div className="w-full space-y-3">
@@ -310,7 +386,47 @@ export default function AgentRunner() {
       {/* Chat Input */}
       <div className="border-t bg-background">
         <div className="max-w-5xl mx-auto px-4 py-4">
+          {attachments.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {attachments.map((att, idx) => (
+                <div key={idx} className="relative group" data-testid={`attachment-preview-${idx}`}>
+                  <img
+                    src={att.dataUrl}
+                    alt={att.name}
+                    className="h-20 w-20 object-cover rounded-lg border"
+                  />
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removeAttachment(idx)}
+                    data-testid={`button-remove-attachment-${idx}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              accept="image/*"
+              multiple
+              className="hidden"
+              data-testid="input-file-upload"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={runMutation.isPending}
+              data-testid="button-attach-file"
+            >
+              <Paperclip className="w-5 h-5" />
+            </Button>
             <Input
               placeholder="Type your message..."
               value={inputValue}
@@ -322,7 +438,7 @@ export default function AgentRunner() {
             />
             <Button
               onClick={handleSend}
-              disabled={!inputValue.trim() || runMutation.isPending || credits < agent.creditCost}
+              disabled={(!inputValue.trim() && attachments.length === 0) || runMutation.isPending || credits < agent.creditCost}
               size="icon"
               data-testid="button-send-message"
             >

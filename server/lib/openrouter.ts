@@ -23,16 +23,31 @@ function isRateLimitError(error: any): boolean {
 export async function chatCompletion(
   systemPrompt: string,
   userMessage: string,
-  model: string = "meta-llama/llama-3.3-70b-instruct"
+  model: string = "meta-llama/llama-3.3-70b-instruct",
+  images?: string[]
 ): Promise<string> {
   return pRetry(
     async () => {
       try {
+        let userContent: any;
+        
+        if (images && images.length > 0) {
+          userContent = [
+            { type: "text", text: userMessage },
+            ...images.map(imageUrl => ({
+              type: "image_url",
+              image_url: { url: imageUrl }
+            }))
+          ];
+        } else {
+          userContent = userMessage;
+        }
+        
         const response = await openrouter.chat.completions.create({
           model: model,
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage }
+            { role: "user", content: userContent }
           ],
           max_tokens: 8192,
         });

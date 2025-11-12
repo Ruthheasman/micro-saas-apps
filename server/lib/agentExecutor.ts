@@ -76,11 +76,13 @@ async function executeOpenRouterAgent(
   inputData: Record<string, any>
 ): Promise<any> {
   const userMessage = buildUserMessage(agent.inputSchema as any, inputData);
+  const images = inputData.images || [];
   
   const response = await chatCompletion(
     agent.systemPrompt,
     userMessage,
-    agent.modelName
+    agent.modelName,
+    images
   );
 
   return { text: response };
