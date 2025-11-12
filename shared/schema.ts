@@ -69,6 +69,7 @@ export const agents = pgTable("agents", {
   modelName: text("model_name").notNull(),
   inputSchema: jsonb("input_schema").notNull(),
   icon: text("icon"),
+  avatarUrl: text("avatar_url"),
   featured: boolean("featured").notNull().default(false),
   usageCount: integer("usage_count").notNull().default(0),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
