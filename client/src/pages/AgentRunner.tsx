@@ -32,9 +32,11 @@ export default function AgentRunner() {
     enabled: !!agentId,
   });
 
-  const { data: credits = 0 } = useQuery<number>({
+  const { data: creditsData } = useQuery<{ balance: number }>({
     queryKey: ['/api/credits'],
   });
+  
+  const credits = creditsData?.balance ?? 0;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
