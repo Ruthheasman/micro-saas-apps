@@ -7,19 +7,44 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Sparkles, Video, Image as ImageIcon, MessageSquare, Zap, Loader2, Edit } from "lucide-react";
+import { Search, Sparkles, Video, Image as ImageIcon, MessageSquare, Zap, Loader2, Edit, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Agent } from "@shared/schema";
 
 export default function AgentMarketplace() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [generatingIconFor, setGeneratingIconFor] = useState<string | null>(null);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: agents = [], isLoading } = useQuery<Agent[]>({
     queryKey: ['/api/agents'],
   });
+
+  const handleGenerateIcon = async (agentId: string) => {
+    try {
+      setGeneratingIconFor(agentId);
+      await apiRequest("POST", `/api/agents/${agentId}/generate-icon`);
+      queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
+      toast({
+        title: "Icon Generated",
+        description: "Agent icon has been updated successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate icon",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingIconFor(null);
+    }
+  };
 
   const filteredAgents = agents.filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -116,13 +141,40 @@ export default function AgentMarketplace() {
                   data-testid={`card-agent-${agent.id}`}
                 >
                   <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      {getModelIcon(agent.modelProvider, agent.modelName)}
-                      {agent.name}
-                    </CardTitle>
-                    <CardDescription className="mt-1">
-                      {agent.description}
-                    </CardDescription>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {agent.icon ? (
+                            <span className="text-2xl" data-testid={`agent-icon-${agent.id}`}>{agent.icon}</span>
+                          ) : (
+                            getModelIcon(agent.modelProvider, agent.modelName)
+                          )}
+                          {agent.name}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          {agent.description}
+                        </CardDescription>
+                      </div>
+                      {user?.id === agent.userId && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleGenerateIcon(agent.id);
+                          }}
+                          disabled={generatingIconFor === agent.id}
+                          title="Generate new icon"
+                          data-testid={`button-generate-icon-${agent.id}`}
+                        >
+                          {generatingIconFor === agent.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </CardHeader>
 
                   <CardContent className="space-y-4">

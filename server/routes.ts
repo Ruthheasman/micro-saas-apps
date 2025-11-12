@@ -513,6 +513,58 @@ Return ONLY the React component code as plain JavaScript. No explanations. No Ty
     }
   });
 
+  app.post('/api/agents/:id/generate-icon', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const agent = await storage.getAgent(req.params.id);
+
+      if (!agent) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      if (agent.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { chatCompletion } = await import("./lib/openrouter");
+      const icon = await chatCompletion(
+        "You are an expert at selecting perfect emoji icons. Respond with ONLY a single emoji character, nothing else.",
+        `Select the most appropriate single emoji icon for an AI agent called "${agent.name}". Description: ${agent.description}. Category: ${agent.category}`,
+        "anthropic/claude-3.5-sonnet"
+      );
+
+      const cleanIcon = icon.trim();
+      
+      if (cleanIcon.length === 0 || cleanIcon.length > 10) {
+        return res.status(500).json({ message: "Invalid icon generated, please try again" });
+      }
+      
+      const emojiRegex = await import("emoji-regex");
+      const regex = emojiRegex.default();
+      const matches = cleanIcon.match(regex);
+      
+      if (!matches || matches.length === 0) {
+        return res.status(500).json({ message: "Generated text instead of emoji, please try again" });
+      }
+      
+      if (matches[0] !== cleanIcon) {
+        return res.status(500).json({ message: "Contains non-emoji characters, please try again" });
+      }
+      
+      const segmenter = new (Intl as any).Segmenter("en", { granularity: "grapheme" });
+      const graphemes = Array.from(segmenter.segment(cleanIcon));
+      if (graphemes.length > 2) {
+        return res.status(500).json({ message: "Generated multiple emojis, please try again" });
+      }
+      
+      const updatedAgent = await storage.updateAgent(agent.id, { icon: cleanIcon });
+      res.json({ icon: cleanIcon, agent: updatedAgent });
+    } catch (error) {
+      console.error("Error generating icon:", error);
+      res.status(500).json({ message: "Failed to generate icon" });
+    }
+  });
+
   app.post('/api/agents/:id/run', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
