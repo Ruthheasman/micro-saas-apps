@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useState } from "react";
+import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { ArrowLeft, Sparkles, Loader2, Video, Image as ImageIcon, MessageSquare, Zap } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -80,23 +81,29 @@ export default function AgentRunner() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        </main>
       </div>
     );
   }
 
   if (!agent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 flex items-center justify-center">
-        <Card className="bg-slate-900/50 border-slate-800 max-w-md">
-          <CardContent className="pt-6 text-center">
-            <p className="text-slate-400">Agent not found</p>
-            <Button onClick={() => setLocation("/agents")} className="mt-4" data-testid="button-back-marketplace">
-              Back to Marketplace
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <Card className="max-w-md">
+            <CardContent className="pt-6 text-center">
+              <p className="text-muted-foreground">Agent not found</p>
+              <Button onClick={() => setLocation("/agents")} className="mt-4" data-testid="button-back-marketplace">
+                Back to Marketplace
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
@@ -104,190 +111,194 @@ export default function AgentRunner() {
   const inputSchema = (agent.inputSchema as any) || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setLocation("/agents")}
-            className="text-slate-400 hover:text-white"
-            data-testid="button-back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <Sparkles className="w-8 h-8 text-purple-400" />
-              {agent.name}
-            </h1>
-            <p className="text-slate-400 mt-1">{agent.description}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-slate-400 border-slate-700">
-              {agent.modelProvider}
-            </Badge>
-            <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20">
-              {agent.category}
-            </Badge>
+    <div className="min-h-screen flex flex-col bg-background">
+      <Navbar />
+      <main className="flex-1">
+        <div className="border-b bg-muted/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center gap-4 mb-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setLocation("/agents")}
+                data-testid="button-back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold flex items-center gap-3">
+                  <Sparkles className="w-8 h-8 text-primary" />
+                  {agent.name}
+                </h1>
+                <p className="text-muted-foreground mt-1">{agent.description}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">
+                  {agent.modelProvider}
+                </Badge>
+                <Badge variant="default">
+                  {agent.category}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-background border rounded-lg">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Zap className="w-5 h-5 text-yellow-600" />
+                <span>Cost: {agent.creditCost} credits</span>
+              </div>
+              <div className="text-muted-foreground">
+                Your balance: <span className="text-foreground font-semibold">{credits}</span> credits
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 rounded-lg">
-          <div className="flex items-center gap-2 text-slate-400">
-            <Zap className="w-5 h-5 text-yellow-500" />
-            <span>Cost: {agent.creditCost} credits</span>
-          </div>
-          <div className="text-slate-400">
-            Your balance: <span className="text-white font-semibold">{credits}</span> credits
-          </div>
-        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Input</CardTitle>
+                <CardDescription>
+                  Provide the required information to run this agent
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {inputSchema.length === 0 ? (
+                  <p className="text-muted-foreground">No inputs required</p>
+                ) : (
+                  inputSchema.map((field: any) => (
+                    <div key={field.name} className="space-y-2">
+                      <Label>{field.label}</Label>
+                      {field.type === "textarea" ? (
+                        <Textarea
+                          placeholder={field.label}
+                          value={inputValues[field.name] || ""}
+                          onChange={(e) => handleInputChange(field.name, e.target.value)}
+                          data-testid={`input-${field.name}`}
+                        />
+                      ) : (
+                        <Input
+                          type={field.type || "text"}
+                          placeholder={field.label}
+                          value={inputValues[field.name] || ""}
+                          onChange={(e) => handleInputChange(field.name, e.target.value)}
+                          data-testid={`input-${field.name}`}
+                        />
+                      )}
+                    </div>
+                  ))
+                )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="bg-slate-900/50 border-slate-800">
-            <CardHeader>
-              <CardTitle className="text-white">Input</CardTitle>
-              <CardDescription className="text-slate-400">
-                Provide the required information to run this agent
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {inputSchema.length === 0 ? (
-                <p className="text-slate-500">No inputs required</p>
-              ) : (
-                inputSchema.map((field: any) => (
-                  <div key={field.name} className="space-y-2">
-                    <Label className="text-slate-300">{field.label}</Label>
-                    {field.type === "textarea" ? (
-                      <Textarea
-                        placeholder={field.label}
-                        value={inputValues[field.name] || ""}
-                        onChange={(e) => handleInputChange(field.name, e.target.value)}
-                        className="bg-slate-950/50 border-slate-700 text-white placeholder:text-slate-600"
-                        data-testid={`input-${field.name}`}
-                      />
-                    ) : (
-                      <Input
-                        type={field.type || "text"}
-                        placeholder={field.label}
-                        value={inputValues[field.name] || ""}
-                        onChange={(e) => handleInputChange(field.name, e.target.value)}
-                        className="bg-slate-950/50 border-slate-700 text-white placeholder:text-slate-600"
-                        data-testid={`input-${field.name}`}
-                      />
+                <Button
+                  onClick={handleRun}
+                  disabled={runMutation.isPending || credits < agent.creditCost}
+                  className="w-full"
+                  data-testid="button-run-agent"
+                >
+                  {runMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Running...
+                    </>
+                  ) : (
+                    "Run Agent"
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Output</CardTitle>
+                <CardDescription>
+                  Results will appear here after execution
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!result ? (
+                  <div className="flex items-center justify-center py-12 text-muted-foreground">
+                    <div className="text-center">
+                      <Sparkles className="w-12 h-12 mx-auto mb-3" />
+                      <p>Run the agent to see results</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {result.type === "video" && result.video_url && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-primary">
+                          <Video className="w-4 h-4" />
+                          <span className="text-sm font-medium">Generated Video</span>
+                        </div>
+                        <video
+                          src={result.video_url}
+                          controls
+                          className="w-full rounded-lg bg-muted"
+                          data-testid="output-video"
+                        />
+                        <a
+                          href={result.video_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline text-sm"
+                        >
+                          Open in new tab
+                        </a>
+                      </div>
+                    )}
+
+                    {result.type === "image" && result.image_url && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-primary">
+                          <ImageIcon className="w-4 h-4" />
+                          <span className="text-sm font-medium">Generated Image</span>
+                        </div>
+                        <img
+                          src={result.image_url}
+                          alt="Generated"
+                          className="w-full rounded-lg"
+                          data-testid="output-image"
+                        />
+                        <a
+                          href={result.image_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline text-sm"
+                        >
+                          Open in new tab
+                        </a>
+                      </div>
+                    )}
+
+                    {result.text && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-primary">
+                          <MessageSquare className="w-4 h-4" />
+                          <span className="text-sm font-medium">Text Response</span>
+                        </div>
+                        <div className="p-4 bg-muted rounded-lg border">
+                          <p className="whitespace-pre-wrap" data-testid="output-text">
+                            {result.text}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {!result.type && !result.text && (
+                      <div className="p-4 bg-muted rounded-lg border">
+                        <pre className="text-sm overflow-auto" data-testid="output-json">
+                          {JSON.stringify(result, null, 2)}
+                        </pre>
+                      </div>
                     )}
                   </div>
-                ))
-              )}
-
-              <Button
-                onClick={handleRun}
-                disabled={runMutation.isPending || credits < agent.creditCost}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                data-testid="button-run-agent"
-              >
-                {runMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Running...
-                  </>
-                ) : (
-                  "Run Agent"
                 )}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-900/50 border-slate-800">
-            <CardHeader>
-              <CardTitle className="text-white">Output</CardTitle>
-              <CardDescription className="text-slate-400">
-                Results will appear here after execution
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!result ? (
-                <div className="flex items-center justify-center py-12 text-slate-500">
-                  <div className="text-center">
-                    <Sparkles className="w-12 h-12 mx-auto mb-3 text-slate-700" />
-                    <p>Run the agent to see results</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {result.type === "video" && result.video_url && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-purple-400">
-                        <Video className="w-4 h-4" />
-                        <span className="text-sm font-medium">Generated Video</span>
-                      </div>
-                      <video
-                        src={result.video_url}
-                        controls
-                        className="w-full rounded-lg bg-slate-950"
-                        data-testid="output-video"
-                      />
-                      <a
-                        href={result.video_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-purple-400 hover:text-purple-300 text-sm underline"
-                      >
-                        Open in new tab
-                      </a>
-                    </div>
-                  )}
-
-                  {result.type === "image" && result.image_url && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-purple-400">
-                        <ImageIcon className="w-4 h-4" />
-                        <span className="text-sm font-medium">Generated Image</span>
-                      </div>
-                      <img
-                        src={result.image_url}
-                        alt="Generated"
-                        className="w-full rounded-lg"
-                        data-testid="output-image"
-                      />
-                      <a
-                        href={result.image_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-purple-400 hover:text-purple-300 text-sm underline"
-                      >
-                        Open in new tab
-                      </a>
-                    </div>
-                  )}
-
-                  {result.text && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-purple-400">
-                        <MessageSquare className="w-4 h-4" />
-                        <span className="text-sm font-medium">Text Response</span>
-                      </div>
-                      <div className="p-4 bg-slate-950/50 rounded-lg border border-slate-800">
-                        <p className="text-slate-300 whitespace-pre-wrap" data-testid="output-text">
-                          {result.text}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {!result.type && !result.text && (
-                    <div className="p-4 bg-slate-950/50 rounded-lg border border-slate-800">
-                      <pre className="text-slate-300 text-sm overflow-auto" data-testid="output-json">
-                        {JSON.stringify(result, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
