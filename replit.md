@@ -48,6 +48,9 @@ The platform features dual AI integration systems:
 
 **AI Agent System:**
 - **OpenRouter Integration**: Provides access to chat LLMs (Claude, GPT-4, Llama) via managed Replit integration
+  - Vision model support for multimodal chat with image attachments
+  - Image upload with 4MB limit and base64 encoding
+  - Inline preview and validation in chat interface
 - **kie.ai Integration**: Powers video/image generation models:
   - Veo 3 / Veo 3.1: Text-to-video generation
   - Sora 2 Pro: Advanced video synthesis
@@ -56,6 +59,11 @@ The platform features dual AI integration systems:
 - **Agent Executor**: Routes requests to appropriate provider based on model type
 - **Credit System**: Transactional credit deduction on successful execution
 - **Lazy Loading**: kie.ai client gracefully degrades when API key unavailable
+- **Agent Icon Generation**: AI-powered emoji icon generation for agents
+  - Uses Claude via OpenRouter for contextual emoji selection
+  - Comprehensive validation using emoji-regex library
+  - Supports complex emoji with modifiers (skin tones, gender)
+  - Per-agent re-roll capability with independent UI state
 
 ### Blockchain Integration
 
