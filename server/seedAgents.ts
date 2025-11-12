@@ -10,6 +10,7 @@ const sampleAgents = [
     modelName: "anthropic/claude-3.5-sonnet",
     systemPrompt: "You are an expert copywriter specializing in e-commerce product descriptions. Create engaging, SEO-optimized descriptions that highlight key features and benefits. Use persuasive language and maintain a professional yet approachable tone.",
     creditCost: 10,
+    status: "published",
     inputSchema: [
       { name: "product_name", label: "Product Name", type: "text" },
       { name: "features", label: "Key Features", type: "textarea" },
@@ -25,6 +26,7 @@ const sampleAgents = [
     modelName: "veo-3.1",
     systemPrompt: "",
     creditCost: 50,
+    status: "published",
     inputSchema: [
       { name: "prompt", label: "Scene Description", type: "textarea" },
       { name: "duration", label: "Duration (seconds)", type: "number" }
@@ -39,6 +41,7 @@ const sampleAgents = [
     modelName: "meta-llama/llama-3.1-70b-instruct",
     systemPrompt: "You are a social media expert who creates viral-worthy captions. Your captions are attention-grabbing, on-brand, and include strategic hashtags. Keep the tone conversational and engaging.",
     creditCost: 8,
+    status: "published",
     inputSchema: [
       { name: "content_topic", label: "Post Topic", type: "text" },
       { name: "platform", label: "Platform (Instagram/Twitter/LinkedIn)", type: "text" },
@@ -54,6 +57,7 @@ const sampleAgents = [
     modelName: "nano-banana",
     systemPrompt: "",
     creditCost: 30,
+    status: "published",
     inputSchema: [
       { name: "image_url", label: "Image URL", type: "text" },
       { name: "prompt", label: "Style Prompt", type: "textarea" }
@@ -68,6 +72,7 @@ const sampleAgents = [
     modelName: "openai/gpt-4o",
     systemPrompt: "You are a patient programming teacher who explains code clearly. Break down complex code into simple concepts, explain what each part does, and why it's written that way. Use analogies when helpful.",
     creditCost: 12,
+    status: "published",
     inputSchema: [
       { name: "code", label: "Code Snippet", type: "textarea" },
       { name: "language", label: "Programming Language", type: "text" }
